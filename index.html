@@ -1,0 +1,2135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grilla con Simplex Noise, Carreteras y Casas</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: #e8e8e8;
+            min-height: 100vh;
+        }
+
+        .main-container {
+            display: flex;
+            gap: 20px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .left-panel {
+            width: 340px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .right-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #00d4ff;
+            text-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+        }
+
+        .panel {
+            background: rgba(30, 30, 50, 0.9);
+            border-radius: 12px;
+            padding: 15px;
+            border: 1px solid rgba(100, 100, 150, 0.3);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .panel h3 {
+            margin: 0 0 12px 0;
+            color: #00d4ff;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.3);
+            padding-bottom: 8px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        button {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #4CAF50 0%, #2e7d32 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+        }
+
+        button.danger {
+            background: linear-gradient(135deg, #f44336 0%, #c62828 100%);
+            box-shadow: 0 2px 8px rgba(244, 67, 54, 0.3);
+        }
+
+        button.secondary {
+            background: linear-gradient(135deg, #607d8b 0%, #455a64 100%);
+            box-shadow: 0 2px 8px rgba(96, 125, 139, 0.3);
+        }
+
+        button.active {
+            background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+            box-shadow: 0 2px 8px rgba(255, 152, 0, 0.4);
+        }
+
+        button.small {
+            padding: 4px 8px;
+            font-size: 11px;
+        }
+
+        input[type="number"],
+        input[type="text"] {
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: 1px solid rgba(100, 100, 150, 0.5);
+            background: rgba(20, 20, 40, 0.8);
+            color: #e8e8e8;
+            width: 70px;
+            font-size: 13px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #00d4ff;
+            box-shadow: 0 0 8px rgba(0, 212, 255, 0.3);
+        }
+
+        label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: #b0b0b0;
+        }
+
+        canvas {
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            cursor: pointer;
+        }
+
+        canvas.road-mode {
+            cursor: crosshair;
+            border-color: #ff9800;
+        }
+
+        .entity-list {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+
+        .entity-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            background: rgba(40, 40, 60, 0.6);
+            border-radius: 6px;
+            margin-bottom: 6px;
+            font-size: 12px;
+        }
+
+        .entity-item .name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .entity-item .visibility-btn {
+            width: 24px;
+            height: 24px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .entity-item .delete-btn {
+            width: 24px;
+            height: 24px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .entity-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+
+        .legend {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: #a0a0a0;
+        }
+
+        .color-box {
+            width: 16px;
+            height: 16px;
+            border: 1px solid #666;
+            border-radius: 3px;
+        }
+
+        .param-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .param-grid label {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .param-grid input {
+            width: 100%;
+            margin-top: 4px;
+        }
+
+        .info-text {
+            font-size: 12px;
+            color: #888;
+            margin-top: 8px;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 6px;
+        }
+
+        #roadInfo {
+            font-size: 13px;
+            padding: 10px;
+            background: rgba(0, 212, 255, 0.1);
+            border-radius: 6px;
+            border-left: 3px solid #00d4ff;
+        }
+
+        .scrollable-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .scrollable-list::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 3px;
+        }
+
+        .scrollable-list::-webkit-scrollbar-thumb {
+            background: rgba(0, 212, 255, 0.5);
+            border-radius: 3px;
+        }
+
+        .stats {
+            display: flex;
+            gap: 15px;
+            font-size: 12px;
+            color: #888;
+        }
+
+        .stats span {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .terrain-params {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .terrain-params label {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .terrain-params input {
+            width: 100%;
+            margin-top: 4px;
+        }
+
+        .tooltip {
+            position: relative;
+            cursor: help;
+        }
+
+        .tooltip::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            white-space: normal;
+            width: 200px;
+            text-align: left;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            z-index: 100;
+        }
+
+        .tooltip:hover::after {
+            opacity: 1;
+        }
+
+        .section-divider {
+            border-top: 1px solid rgba(100, 100, 150, 0.3);
+            margin: 10px 0;
+            padding-top: 10px;
+        }
+
+        .section-title {
+            font-size: 12px;
+            color: #00d4ff;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <h1>🗺️ Map Maker - Carreteras y Casas</h1>
+
+    <div class="main-container">
+        <!-- Panel izquierdo: Controles -->
+        <div class="left-panel">
+            <!-- Parámetros del Terreno -->
+            <div class="panel">
+                <h3>⚙️ Parámetros del Terreno</h3>
+                <div class="terrain-params">
+                    <label>
+                        Ancho:
+                        <input type="number" id="width" value="100" min="10" max="200">
+                    </label>
+                    <label>
+                        Alto:
+                        <input type="number" id="height" value="50" min="10" max="100">
+                    </label>
+                    <label>
+                        Escala:
+                        <input type="number" id="scale" value="0.1" min="0.001" max="1" step="0.001">
+                    </label>
+                    <label>
+                        Octavas:
+                        <input type="number" id="octaves" value="4" min="1" max="8">
+                    </label>
+                    <label class="tooltip"
+                        data-tooltip="Cuánto influye cada octava adicional. Con 0, solo cuenta la primera octava y el terreno es más suave.">
+                        Persistencia:
+                        <input type="number" id="persistence" value="0" min="0" max="1" step="0.1">
+                    </label>
+                    <label class="tooltip"
+                        data-tooltip="Cuánto aumenta el detalle en cada octava. Con 0, no hay detalle extra y el terreno es más uniforme.">
+                        Lacunaridad:
+                        <input type="number" id="lacunarity" value="0" min="0" max="4" step="0.1">
+                    </label>
+                </div>
+                <button style="margin-top: 10px; width: 100%;" onclick="generateGrid()">🔄 Generar Terreno</button>
+            </div>
+
+            <!-- Panel de Carreteras -->
+            <div class="panel">
+                <h3>🛣️ Carreteras</h3>
+                <div class="controls" style="margin-bottom: 10px;">
+                    <button id="roadModeBtn" onclick="toggleRoadMode()">
+                        Modo Carretera: <span id="modeStatus">OFF</span>
+                    </button>
+                </div>
+                <div class="param-grid" style="margin-bottom: 10px;">
+                    <label class="tooltip"
+                        data-tooltip="Máximo de casas que una carretera puede destruir por celda. 0 = evitar casas completamente.">
+                        Max casas destruibles:
+                        <input type="number" id="maxHousesToDestroy" value="1" min="0" max="10">
+                    </label>
+                </div>
+                <div class="info-text">
+                    Activa el modo y haz clic en 2 puntos. Destruye árboles/piedras. Puede destruir casas según config.
+                </div>
+                <div id="roadsList" class="entity-list scrollable-list">
+                </div>
+            </div>
+
+            <!-- Panel de Casas -->
+            <div class="panel">
+                <h3>🏠 Generador de Casas</h3>
+
+                <div class="section-title">📏 Filtros de Altura</div>
+                <div class="param-grid">
+                    <label>
+                        Altura mínima:
+                        <input type="number" id="minHeight" value="0.3" min="0" max="1" step="0.05">
+                    </label>
+                    <label>
+                        Altura máxima:
+                        <input type="number" id="maxHeight" value="0.7" min="0" max="1" step="0.05">
+                    </label>
+                </div>
+
+                <div class="section-divider">
+                    <div class="section-title">🎯 Atracción (0-100)</div>
+                    <div class="param-grid">
+                        <label class="tooltip"
+                            data-tooltip="Atracción hacia carreteras. Mayor valor = más casas cerca de carreteras. Fórmula: bonus = importancia/d²">
+                            Atracción carreteras:
+                            <input type="number" id="roadImportance" value="50" min="0" max="100">
+                        </label>
+                        <label class="tooltip"
+                            data-tooltip="Atracción hacia otras casas. Mayor valor = casas más agrupadas. Fórmula: bonus = importancia/d²">
+                            Atracción vecinos:
+                            <input type="number" id="neighborImportance" value="30" min="0" max="100">
+                        </label>
+                        <label class="tooltip"
+                            data-tooltip="Atracción hacia el agua. Mayor valor = más casas cerca del agua. Fórmula: bonus = importancia/d²">
+                            Atracción agua:
+                            <input type="number" id="waterImportance" value="20" min="0" max="100">
+                        </label>
+                        <label>
+                            Radio de búsqueda:
+                            <input type="number" id="searchRadius" value="4" min="1" max="10">
+                        </label>
+                    </div>
+                </div>
+
+                <div class="section-divider">
+                    <div class="section-title">🎲 Probabilidad</div>
+                    <div class="param-grid">
+                        <label>
+                            Probabilidad base (%):
+                            <input type="number" id="houseProbability" value="30" min="0" max="100">
+                        </label>
+                        <label>
+                            Max casas/celda:
+                            <input type="number" id="maxHousesPerCell" value="3" min="1" max="10">
+                        </label>
+                    </div>
+                </div>
+
+                <div class="controls" style="margin-top: 10px;">
+                    <button onclick="generateHouses()">🏗️ Generar Casas</button>
+                    <button class="danger" onclick="clearAllHouses()">🗑️ Limpiar Casas</button>
+                </div>
+                <div id="housesList" class="entity-list scrollable-list" style="margin-top: 10px;">
+                </div>
+            </div>
+
+            <!-- Panel de Piedras -->
+            <div class="panel">
+                <h3>🪨 Generador de Piedras</h3>
+                <div class="info-text" style="margin-bottom: 10px;">
+                    Las piedras aparecen más en montañas. No en agua, casas, carreteras ni montañas altas.
+                </div>
+                <div class="param-grid">
+                    <label class="tooltip"
+                        data-tooltip="Probabilidad base de generar piedra en celdas válidas (0-100%)">
+                        Probabilidad (%):
+                        <input type="number" id="rockProbability" value="15" min="0" max="100">
+                    </label>
+                    <label class="tooltip" data-tooltip="Máximo de piedras por celda">
+                        Max piedras/celda:
+                        <input type="number" id="maxRocksPerCell" value="3" min="1" max="10">
+                    </label>
+                    <label class="tooltip" data-tooltip="Radio mínimo de piedra (relativo a celda, 0.05-0.3)">
+                        Radio mín:
+                        <input type="number" id="rockMinRadius" value="0.08" min="0.05" max="0.3" step="0.01">
+                    </label>
+                    <label class="tooltip" data-tooltip="Radio máximo de piedra (relativo a celda, 0.1-0.5)">
+                        Radio máx:
+                        <input type="number" id="rockMaxRadius" value="0.25" min="0.1" max="0.5" step="0.01">
+                    </label>
+                </div>
+                <div class="controls" style="margin-top: 10px;">
+                    <button onclick="generateRocks()">🪨 Generar Piedras</button>
+                    <button class="danger" onclick="clearAllRocks()">🗑️ Limpiar Piedras</button>
+                </div>
+                <div id="rocksList" class="entity-list scrollable-list" style="margin-top: 10px;"></div>
+            </div>
+
+            <!-- Panel de Árboles -->
+            <div class="panel">
+                <h3>🌲 Generador de Árboles</h3>
+                <div class="info-text" style="margin-bottom: 10px;">
+                    Altura ideal: 20%. No en agua, carreteras ni montañas altas. Evitan casas.
+                </div>
+                <div class="param-grid">
+                    <label class="tooltip" data-tooltip="Probabilidad base de generar árbol (0-100%)">
+                        Probabilidad (%):
+                        <input type="number" id="treeProbability" value="25" min="0" max="100">
+                    </label>
+                    <label class="tooltip" data-tooltip="Máximo de árboles por celda">
+                        Max árboles/celda:
+                        <input type="number" id="maxTreesPerCell" value="4" min="1" max="10">
+                    </label>
+                    <label class="tooltip" data-tooltip="Radio mínimo del tronco (0.03-0.1)">
+                        Radio mín:
+                        <input type="number" id="treeMinRadius" value="0.05" min="0.03" max="0.1" step="0.01">
+                    </label>
+                    <label class="tooltip" data-tooltip="Radio máximo del tronco (0.08-0.2)">
+                        Radio máx:
+                        <input type="number" id="treeMaxRadius" value="0.12" min="0.08" max="0.2" step="0.01">
+                    </label>
+                    <label class="tooltip" data-tooltip="Penalización por cada casa cercana (0-100)">
+                        Penaliz. casas:
+                        <input type="number" id="treeCasePenalty" value="30" min="0" max="100">
+                    </label>
+                    <label class="tooltip" data-tooltip="Radio de búsqueda de casas cercanas">
+                        Radio búsqueda:
+                        <input type="number" id="treeSearchRadius" value="3" min="1" max="8">
+                    </label>
+                </div>
+                <div class="controls" style="margin-top: 10px;">
+                    <button onclick="generateTrees()">🌲 Generar Árboles</button>
+                    <button class="danger" onclick="clearAllTrees()">🗑️ Limpiar Árboles</button>
+                </div>
+                <div id="treesList" class="entity-list scrollable-list" style="margin-top: 10px;"></div>
+            </div>
+
+            <!-- Acciones Globales -->
+            <div class="panel">
+                <h3>🔧 Acciones</h3>
+                <div class="controls">
+                    <button class="secondary small" onclick="toggleAllRoads(true)">👁️ Carreteras</button>
+                    <button class="secondary small" onclick="toggleAllRoads(false)">🙈 Carreteras</button>
+                    <button class="secondary small" onclick="toggleAllHouses(true)">👁️ Casas</button>
+                    <button class="secondary small" onclick="toggleAllHouses(false)">🙈 Casas</button>
+                </div>
+                <div class="controls" style="margin-top: 8px;">
+                    <button class="secondary small" onclick="toggleAllRocks(true)">👁️ Piedras</button>
+                    <button class="secondary small" onclick="toggleAllRocks(false)">🙈 Piedras</button>
+                    <button class="secondary small" onclick="toggleAllTrees(true)">👁️ Árboles</button>
+                    <button class="secondary small" onclick="toggleAllTrees(false)">🙈 Árboles</button>
+                </div>
+                <div class="controls" style="margin-top: 8px;">
+                    <button class="danger" onclick="clearAll()">⚠️ Limpiar Todo</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel derecho: Canvas y leyenda -->
+        <div class="right-panel">
+            <div class="panel">
+                <canvas id="gridCanvas"></canvas>
+                <div id="roadInfo" style="margin-top: 10px;">Genera un terreno para comenzar.</div>
+                <div class="stats" style="margin-top: 10px;">
+                    <span id="statsRoads">Carreteras: 0</span>
+                    <span id="statsHouses">Casas: 0</span>
+                    <span id="statsRocks">Piedras: 0</span>
+                    <span id="statsTrees">Árboles: 0</span>
+                    <span id="statsCells">Celdas: 0</span>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h3>📊 Leyenda</h3>
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="color-box" style="background: #0a1f2e;"></div>
+                        <span>Agua profunda</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="color-box" style="background: #1a4d2e;"></div>
+                        <span>Agua</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="color-box" style="background: #8B4513;"></div>
+                        <span>Tierra</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="color-box" style="background: #90EE90;"></div>
+                        <span>Montaña</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="color-box" style="background: #4a4a4a;"></div>
+                        <span>Montaña alta</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="color-box" style="background: #FFD700;"></div>
+                        <span>Carretera</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="color-box" style="background: #e74c3c;"></div>
+                        <span>Casa</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="color-box" style="background: #6b6b6b; border-radius: 50%;"></div>
+                        <span>Piedra</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="color-box" style="background: #228B22; border-radius: 50%;"></div>
+                        <span>Árbol</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============== SIMPLEX NOISE ==============
+        class SimplexNoise {
+            constructor() {
+                this.perm = [];
+                for (let i = 0; i < 256; i++) {
+                    this.perm[i] = i;
+                }
+                for (let i = 255; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [this.perm[i], this.perm[j]] = [this.perm[j], this.perm[i]];
+                }
+                for (let i = 0; i < 256; i++) {
+                    this.perm[256 + i] = this.perm[i];
+                }
+            }
+
+            fade(t) {
+                return t * t * t * (t * (t * 6 - 15) + 10);
+            }
+
+            lerp(t, a, b) {
+                return a + t * (b - a);
+            }
+
+            grad(hash, x, y) {
+                const h = hash & 15;
+                const u = h < 8 ? x : y;
+                const v = h < 4 ? y : h === 12 || h === 14 ? x : 0;
+                return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
+            }
+
+            noise(x, y) {
+                const X = Math.floor(x) & 255;
+                const Y = Math.floor(y) & 255;
+
+                x -= Math.floor(x);
+                y -= Math.floor(y);
+
+                const u = this.fade(x);
+                const v = this.fade(y);
+
+                const a = this.perm[X] + Y;
+                const aa = this.perm[a];
+                const ab = this.perm[a + 1];
+                const b = this.perm[X + 1] + Y;
+                const ba = this.perm[b];
+                const bb = this.perm[b + 1];
+
+                return this.lerp(v,
+                    this.lerp(u, this.grad(this.perm[aa], x, y),
+                        this.grad(this.perm[ba], x - 1, y)),
+                    this.lerp(u, this.grad(this.perm[ab], x, y - 1),
+                        this.grad(this.perm[bb], x - 1, y - 1))
+                );
+            }
+        }
+
+        // ============== ESTADO GLOBAL ==============
+        let grid = [];
+        let roads = [];
+        let houses = [];
+        let simplex;
+        let roadMode = false;
+        let selectedCells = [];
+        let roadIdCounter = 1;
+        let houseGroupIdCounter = 1;
+        let rocks = [];
+        let trees = [];
+        let rockGroupIdCounter = 1;
+        let treeGroupIdCounter = 1;
+
+        const cellSize = 12;
+        const MIN_PASSABLE = 0.25;
+        const MAX_PASSABLE = 0.75;
+        const WATER_THRESHOLD = 0.3; // Por debajo de esto es agua
+
+        const roadColors = [
+            '#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4',
+            '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE'
+        ];
+
+        // ============== GENERACIÓN DE GRILLA ==============
+        function generateGrid() {
+            const w = parseInt(document.getElementById('width').value);
+            const h = parseInt(document.getElementById('height').value);
+            const scale = parseFloat(document.getElementById('scale').value);
+            const octaves = parseInt(document.getElementById('octaves').value);
+            const persistence = parseFloat(document.getElementById('persistence').value);
+            const lacunarity = parseFloat(document.getElementById('lacunarity').value);
+
+            simplex = new SimplexNoise();
+            grid = [];
+            roads = [];
+            houses = [];
+            rocks = [];
+            trees = [];
+            roadIdCounter = 1;
+            houseGroupIdCounter = 1;
+            rockGroupIdCounter = 1;
+            treeGroupIdCounter = 1;
+
+            for (let y = 0; y < h; y++) {
+                grid[y] = [];
+                for (let x = 0; x < w; x++) {
+                    let noise = 0;
+                    let amplitude = 1;
+                    let frequency = scale;
+                    let maxValue = 0;
+
+                    for (let i = 0; i < octaves; i++) {
+                        noise += simplex.noise(x * frequency, y * frequency) * amplitude;
+                        maxValue += amplitude;
+                        amplitude *= persistence;
+                        frequency *= lacunarity;
+                    }
+
+                    // Si maxValue es 0 (por persistencia 0), usar solo el primer noise
+                    if (maxValue === 0) maxValue = 1;
+                    noise = noise / maxValue;
+                    const normalizedNoise = (noise + 1) / 2;
+
+                    grid[y][x] = {
+                        noise: normalizedNoise,
+                        isPassable: normalizedNoise >= MIN_PASSABLE && normalizedNoise <= MAX_PASSABLE,
+                        isWater: normalizedNoise < WATER_THRESHOLD,
+                        roadIds: [],
+                        houses: [],
+                        rocks: [],
+                        trees: []
+                    };
+                }
+            }
+
+            updateUI();
+            drawGrid();
+            showInfo('Terreno generado. Activa el modo carretera para crear caminos.');
+        }
+
+        // ============== COLORES ==============
+        function getTerrainColor(value) {
+            if (value < MIN_PASSABLE) return '#0a1f2e';
+            if (value > MAX_PASSABLE) return '#4a4a4a';
+            if (value < 0.3) return '#1a4d2e';
+            if (value < 0.6) return '#8B4513';
+            return '#90EE90';
+        }
+
+        // ============== DIBUJADO ==============
+        function drawGrid() {
+            if (!grid || grid.length === 0 || !grid[0]) return;
+
+            const canvas = document.getElementById('gridCanvas');
+            const ctx = canvas.getContext('2d');
+
+            canvas.width = grid[0].length * cellSize;
+            canvas.height = grid.length * cellSize;
+
+            for (let y = 0; y < grid.length; y++) {
+                for (let x = 0; x < grid[y].length; x++) {
+                    const cell = grid[y][x];
+                    const isSelected = selectedCells.some(c => c.x === x && c.y === y);
+
+                    // Dibujar terreno base
+                    ctx.fillStyle = getTerrainColor(cell.noise);
+                    ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+
+                    // Dibujar carretera si hay alguna visible
+                    const visibleRoad = roads.find(r => r.visible && r.cells.some(c => c.x === x && c.y === y));
+                    if (visibleRoad) {
+                        ctx.fillStyle = visibleRoad.color;
+                        ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+                    }
+
+                    // Dibujar casas (solo si no hay carretera visible)
+                    if (!visibleRoad) {
+                        const visibleHouses = cell.houses.filter(h => {
+                            const group = houses.find(g => g.id === h.groupId);
+                            return group && group.visible;
+                        });
+
+                        if (visibleHouses.length > 0) {
+                            visibleHouses.forEach(house => {
+                                // Usar dimensiones de la casa o valores por defecto
+                                const houseW = (house.width || HOUSE_WIDTH) * cellSize;
+                                const houseH = (house.height || HOUSE_HEIGHT) * cellSize;
+                                const hx = x * cellSize + house.offsetX * cellSize;
+                                const hy = y * cellSize + house.offsetY * cellSize;
+
+                                // Cuerpo de la casa (rectángulo)
+                                ctx.fillStyle = '#e74c3c';
+                                ctx.fillRect(hx, hy, houseW, houseH);
+
+                                // Techo (triángulo)
+                                ctx.fillStyle = '#c0392b';
+                                ctx.beginPath();
+                                ctx.moveTo(hx, hy);
+                                ctx.lineTo(hx + houseW / 2, hy - houseH * 0.4);
+                                ctx.lineTo(hx + houseW, hy);
+                                ctx.fill();
+
+                                // Borde de la casa
+                                ctx.strokeStyle = '#922b21';
+                                ctx.lineWidth = 0.5;
+                                ctx.strokeRect(hx, hy, houseW, houseH);
+                            });
+                        }
+                    }
+
+                    // Dibujar piedras (solo si no hay carretera visible)
+                    if (!visibleRoad) {
+                        const visibleRocks = cell.rocks.filter(r => {
+                            const group = rocks.find(g => g.id === r.groupId);
+                            return group && group.visible;
+                        });
+
+                        visibleRocks.forEach(rock => {
+                            const rx = x * cellSize + rock.offsetX * cellSize;
+                            const ry = y * cellSize + rock.offsetY * cellSize;
+                            const rRadius = rock.radius * cellSize;
+
+                            // Sombra de la piedra
+                            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                            ctx.beginPath();
+                            ctx.ellipse(rx + rRadius * 0.15, ry + rRadius * 0.15, rRadius, rRadius * 0.7, 0, 0, Math.PI * 2);
+                            ctx.fill();
+
+                            // Cuerpo de la piedra (gris) - usar shade guardado
+                            const grayShade = rock.shade || 100;
+                            ctx.fillStyle = `rgb(${grayShade}, ${grayShade - 10}, ${grayShade - 5})`;
+                            ctx.beginPath();
+                            ctx.arc(rx, ry, rRadius, 0, Math.PI * 2);
+                            ctx.fill();
+
+                            // Brillo
+                            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                            ctx.beginPath();
+                            ctx.arc(rx - rRadius * 0.3, ry - rRadius * 0.3, rRadius * 0.3, 0, Math.PI * 2);
+                            ctx.fill();
+
+                            // Borde
+                            ctx.strokeStyle = '#4a4a4a';
+                            ctx.lineWidth = 0.5;
+                            ctx.beginPath();
+                            ctx.arc(rx, ry, rRadius, 0, Math.PI * 2);
+                            ctx.stroke();
+                        });
+                    }
+
+                    // Dibujar árboles
+                    const visibleTrees = cell.trees.filter(t => {
+                        const group = trees.find(g => g.id === t.groupId);
+                        return group && group.visible;
+                    });
+
+                    visibleTrees.forEach(tree => {
+                        const tx = x * cellSize + tree.offsetX * cellSize;
+                        const ty = y * cellSize + tree.offsetY * cellSize;
+                        const tRadius = tree.radius * cellSize;
+                        const crownRadius = tRadius * 2.5; // Copa del árbol más grande que el tronco
+
+                        // Sombra del árbol
+                        ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+                        ctx.beginPath();
+                        ctx.ellipse(tx + crownRadius * 0.2, ty + crownRadius * 0.2, crownRadius, crownRadius * 0.6, 0, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        // Copa del árbol (verde oscuro base)
+                        ctx.fillStyle = '#1a5f1a';
+                        ctx.beginPath();
+                        ctx.arc(tx, ty, crownRadius, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        // Copa interior (verde más claro)
+                        ctx.fillStyle = '#228B22';
+                        ctx.beginPath();
+                        ctx.arc(tx - crownRadius * 0.15, ty - crownRadius * 0.15, crownRadius * 0.7, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        // Brillo
+                        ctx.fillStyle = 'rgba(144, 238, 144, 0.4)';
+                        ctx.beginPath();
+                        ctx.arc(tx - crownRadius * 0.3, ty - crownRadius * 0.3, crownRadius * 0.35, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        // Borde de la copa
+                        ctx.strokeStyle = '#0d3d0d';
+                        ctx.lineWidth = 0.5;
+                        ctx.beginPath();
+                        ctx.arc(tx, ty, crownRadius, 0, Math.PI * 2);
+                        ctx.stroke();
+                    });
+
+                    // Borde de selección
+                    if (isSelected) {
+                        ctx.strokeStyle = '#FF00FF';
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(x * cellSize + 1, y * cellSize + 1, cellSize - 2, cellSize - 2);
+                    }
+
+                    // Borde de celda
+                    ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(x * cellSize, y * cellSize, cellSize, cellSize);
+                }
+            }
+
+            updateStats();
+        }
+
+        // ============== CARRETERAS ==============
+        function toggleRoadMode() {
+            roadMode = !roadMode;
+            selectedCells = [];
+
+            const canvas = document.getElementById('gridCanvas');
+            const modeStatus = document.getElementById('modeStatus');
+            const btn = document.getElementById('roadModeBtn');
+
+            if (roadMode) {
+                canvas.classList.add('road-mode');
+                modeStatus.textContent = 'ON';
+                btn.classList.add('active');
+                showInfo('Modo carretera activado. Haz clic en 2 celdas pasables (sin casas) para crear una carretera.');
+            } else {
+                canvas.classList.remove('road-mode');
+                modeStatus.textContent = 'OFF';
+                btn.classList.remove('active');
+                showInfo('Modo carretera desactivado.');
+            }
+
+            drawGrid();
+        }
+
+        function isPassable(x, y) {
+            if (!grid || !grid[y] || !grid[y][x]) return false;
+            return grid[y][x].isPassable;
+        }
+
+        // Verifica si una celda puede ser parte de una carretera
+        // Considera el máximo de casas destruibles configurado
+        function canBeRoad(x, y, maxHousesToDestroy = null) {
+            if (!grid || !grid[y] || !grid[y][x]) return false;
+            const cell = grid[y][x];
+            if (!cell.isPassable) return false;
+
+            // Si no se especifica, obtener del input
+            if (maxHousesToDestroy === null) {
+                maxHousesToDestroy = parseInt(document.getElementById('maxHousesToDestroy').value) || 0;
+            }
+
+            // Puede ser carretera si no hay casas, o si las casas son <= al máximo destruible
+            return cell.houses.length <= maxHousesToDestroy;
+        }
+
+        // Obtiene el costo extra por destruir casas en una celda
+        function getHouseDestroyCost(x, y) {
+            if (!grid || !grid[y] || !grid[y][x]) return 0;
+            const cell = grid[y][x];
+            // Cada casa añade un costo significativo (50) para que el pathfinding prefiera evitarlas
+            return cell.houses.length * 50;
+        }
+
+        // Verifica si una celda tiene carretera
+        function hasRoad(x, y) {
+            if (!grid || !grid[y] || !grid[y][x]) return false;
+            return grid[y][x].roadIds.length > 0;
+        }
+
+        function handleCanvasClick(event) {
+            if (!roadMode || !grid || grid.length === 0) return;
+
+            const canvas = document.getElementById('gridCanvas');
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((event.clientX - rect.left) / cellSize);
+            const y = Math.floor((event.clientY - rect.top) / cellSize);
+
+            if (y >= 0 && y < grid.length && x >= 0 && x < grid[0].length) {
+                if (!canBeRoad(x, y)) {
+                    if (!isPassable(x, y)) {
+                        showInfo(`Celda (${x}, ${y}) es impasable.`);
+                    } else {
+                        showInfo(`Celda (${x}, ${y}) tiene casas. No puede ser inicio/fin de carretera.`);
+                    }
+                    return;
+                }
+
+                const index = selectedCells.findIndex(c => c.x === x && c.y === y);
+                if (index !== -1) {
+                    selectedCells.splice(index, 1);
+                    showInfo(`Celda (${x}, ${y}) deseleccionada. ${selectedCells.length}/2 celdas.`);
+                } else if (selectedCells.length < 2) {
+                    selectedCells.push({ x, y });
+                    showInfo(`Celda (${x}, ${y}) seleccionada. ${selectedCells.length}/2 celdas.`);
+
+                    if (selectedCells.length === 2) {
+                        setTimeout(createRoad, 100);
+                    }
+                } else {
+                    selectedCells = [{ x, y }];
+                    showInfo(`Nueva selección. Celda (${x}, ${y}) seleccionada. 1/2 celdas.`);
+                }
+
+                drawGrid();
+            }
+        }
+
+        function createRoad() {
+            if (selectedCells.length !== 2) return;
+
+            const start = selectedCells[0];
+            const end = selectedCells[1];
+
+            const path = aStar(start, end);
+
+            if (path.length === 0) {
+                showInfo('No se pudo encontrar un camino (puede estar bloqueado por casas o zonas impasables).');
+                selectedCells = [];
+                drawGrid();
+                return;
+            }
+
+            const roadEntity = {
+                id: roadIdCounter++,
+                name: `Carretera ${roadIdCounter - 1}`,
+                cells: path,
+                visible: true,
+                color: roadColors[(roadIdCounter - 2) % roadColors.length],
+                start: { x: start.x, y: start.y },
+                end: { x: end.x, y: end.y }
+            };
+
+            roads.push(roadEntity);
+
+            // Contadores de elementos destruidos
+            let destroyedHouses = 0;
+            let destroyedRocks = 0;
+            let destroyedTrees = 0;
+
+            path.forEach(cell => {
+                const cellData = grid[cell.y][cell.x];
+
+                // Agregar ID de carretera a la celda
+                cellData.roadIds.push(roadEntity.id);
+
+                // Destruir casas en esta celda
+                if (cellData.houses.length > 0) {
+                    destroyedHouses += cellData.houses.length;
+                    // Actualizar contadores en los grupos de casas
+                    cellData.houses.forEach(house => {
+                        const group = houses.find(g => g.id === house.groupId);
+                        if (group) {
+                            group.count--;
+                        }
+                    });
+                    cellData.houses = [];
+                }
+
+                // Destruir piedras en esta celda
+                if (cellData.rocks.length > 0) {
+                    destroyedRocks += cellData.rocks.length;
+                    // Actualizar contadores en los grupos de piedras
+                    cellData.rocks.forEach(rock => {
+                        const group = rocks.find(g => g.id === rock.groupId);
+                        if (group) {
+                            group.count--;
+                        }
+                    });
+                    cellData.rocks = [];
+                }
+
+                // Destruir árboles en esta celda
+                if (cellData.trees.length > 0) {
+                    destroyedTrees += cellData.trees.length;
+                    // Actualizar contadores en los grupos de árboles
+                    cellData.trees.forEach(tree => {
+                        const group = trees.find(g => g.id === tree.groupId);
+                        if (group) {
+                            group.count--;
+                        }
+                    });
+                    cellData.trees = [];
+                }
+            });
+
+            // Limpiar grupos vacíos
+            houses = houses.filter(g => g.count > 0);
+            rocks = rocks.filter(g => g.count > 0);
+            trees = trees.filter(g => g.count > 0);
+
+            selectedCells = [];
+            updateUI();
+            drawGrid();
+
+            // Mensaje informativo
+            let msg = `Carretera creada: ${path.length} celdas desde (${start.x},${start.y}) hasta (${end.x},${end.y})`;
+            const destroyed = [];
+            if (destroyedHouses > 0) destroyed.push(`${destroyedHouses} casas`);
+            if (destroyedRocks > 0) destroyed.push(`${destroyedRocks} piedras`);
+            if (destroyedTrees > 0) destroyed.push(`${destroyedTrees} árboles`);
+            if (destroyed.length > 0) {
+                msg += `. Destruidos: ${destroyed.join(', ')}.`;
+            }
+            showInfo(msg);
+        }
+
+        function deleteRoad(roadId) {
+            const roadIndex = roads.findIndex(r => r.id === roadId);
+            if (roadIndex === -1) return;
+
+            const road = roads[roadIndex];
+
+            road.cells.forEach(cell => {
+                const cellData = grid[cell.y][cell.x];
+                cellData.roadIds = cellData.roadIds.filter(id => id !== roadId);
+            });
+
+            roads.splice(roadIndex, 1);
+            updateUI();
+            drawGrid();
+        }
+
+        function toggleRoadVisibility(roadId) {
+            const road = roads.find(r => r.id === roadId);
+            if (road) {
+                road.visible = !road.visible;
+                updateUI();
+                drawGrid();
+            }
+        }
+
+        function toggleAllRoads(visible) {
+            roads.forEach(r => r.visible = visible);
+            updateUI();
+            drawGrid();
+        }
+
+        // ============== CASAS ==============
+        // Dimensiones de las casas (relativas a la celda, 0-1)
+        const HOUSE_WIDTH = 0.25;
+        const HOUSE_HEIGHT = 0.20;
+        const HOUSE_MARGIN = 0.05; // Margen desde el borde de la celda
+
+        // Calcula el bonus por cercanía usando importance/d²
+        // Retorna un valor alto si hay elementos cerca, bajo si están lejos
+        function calculateProximityBonus(x, y, radius, importance, checkFn) {
+            if (importance <= 0) return 0;
+
+            let bonus = 0;
+            for (let dy = -radius; dy <= radius; dy++) {
+                for (let dx = -radius; dx <= radius; dx++) {
+                    if (dx === 0 && dy === 0) continue;
+
+                    const nx = x + dx;
+                    const ny = y + dy;
+
+                    if (ny >= 0 && ny < grid.length && nx >= 0 && nx < grid[0].length) {
+                        if (checkFn(nx, ny)) {
+                            const d2 = dx * dx + dy * dy;
+                            bonus += importance / d2;
+                        }
+                    }
+                }
+            }
+            return bonus;
+        }
+
+
+        // Verifica si dos rectángulos se superponen
+        function rectanglesOverlap(x1, y1, w1, h1, x2, y2, w2, h2) {
+            return !(x1 + w1 <= x2 || x2 + w2 <= x1 || y1 + h1 <= y2 || y2 + h2 <= y1);
+        }
+
+        // Intenta colocar una casa sin colisión en una celda
+        // Verifica colisiones con otras casas, piedras y árboles
+        function tryPlaceHouse(cellX, cellY, existingHousesInCell, existingRocksInCell = [], existingTreesInCell = [], maxAttempts = 30) {
+            const availableWidth = 1 - 2 * HOUSE_MARGIN - HOUSE_WIDTH;
+            const availableHeight = 1 - 2 * HOUSE_MARGIN - HOUSE_HEIGHT;
+
+            for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                const newX = HOUSE_MARGIN + Math.random() * availableWidth;
+                const newY = HOUSE_MARGIN + Math.random() * availableHeight;
+
+                let collision = false;
+
+                // Verificar colisión con casas existentes
+                for (const existing of existingHousesInCell) {
+                    const existingW = existing.width || HOUSE_WIDTH;
+                    const existingH = existing.height || HOUSE_HEIGHT;
+
+                    if (rectanglesOverlap(
+                        newX, newY, HOUSE_WIDTH, HOUSE_HEIGHT,
+                        existing.offsetX, existing.offsetY, existingW, existingH
+                    )) {
+                        collision = true;
+                        break;
+                    }
+                }
+
+                // Verificar colisión con piedras (círculo-rectángulo)
+                if (!collision) {
+                    for (const rock of existingRocksInCell) {
+                        if (circleRectOverlap(rock.offsetX, rock.offsetY, rock.radius, newX, newY, HOUSE_WIDTH, HOUSE_HEIGHT)) {
+                            collision = true;
+                            break;
+                        }
+                    }
+                }
+
+                // Verificar colisión con árboles (círculo-rectángulo, usando copa)
+                if (!collision) {
+                    for (const tree of existingTreesInCell) {
+                        const crownRadius = tree.radius * 2.5;
+                        if (circleRectOverlap(tree.offsetX, tree.offsetY, crownRadius, newX, newY, HOUSE_WIDTH, HOUSE_HEIGHT)) {
+                            collision = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!collision) {
+                    return { offsetX: newX, offsetY: newY, width: HOUSE_WIDTH, height: HOUSE_HEIGHT };
+                }
+            }
+
+            return null; // No se pudo colocar sin colisión
+        }
+
+        function generateHouses() {
+            const minHeight = parseFloat(document.getElementById('minHeight').value);
+            const maxHeight = parseFloat(document.getElementById('maxHeight').value);
+            const roadImportance = parseInt(document.getElementById('roadImportance').value) / 100;
+            const neighborImportance = parseInt(document.getElementById('neighborImportance').value) / 100;
+            const waterImportance = parseInt(document.getElementById('waterImportance').value) / 100;
+            const searchRadius = parseInt(document.getElementById('searchRadius').value);
+            const baseProbability = parseInt(document.getElementById('houseProbability').value) / 100;
+            const maxHousesPerCell = parseInt(document.getElementById('maxHousesPerCell').value);
+
+            if (!grid || grid.length === 0) {
+                showInfo('Primero genera un terreno.');
+                return;
+            }
+
+            // Verificar si hay carreteras para calcular bonus
+            const hasRoads = roads.length > 0;
+
+            const newHouses = [];
+            let totalHouses = 0;
+            let cellsWithHouses = new Set();
+
+            // Recorrer todas las celdas
+            for (let y = 0; y < grid.length; y++) {
+                for (let x = 0; x < grid[y].length; x++) {
+                    const cell = grid[y][x];
+
+                    // Verificar si la celda es válida para casas
+                    if (!cell.isPassable) continue;
+                    if (cell.noise < minHeight || cell.noise > maxHeight) continue;
+                    if (cell.roadIds.length > 0) continue; // No casas sobre carreteras
+
+                    // Verificar límite de casas por celda
+                    const currentHouseCount = cell.houses.length;
+                    if (currentHouseCount >= maxHousesPerCell) continue;
+
+                    // Empezar con probabilidad base
+                    let probability = baseProbability;
+
+                    // Calcular la suma total de importancias para normalizar
+                    const totalImportance = roadImportance + neighborImportance + waterImportance;
+
+                    if (totalImportance > 0) {
+                        // Bonus por cercanía a carreteras (importance/d²)
+                        // Si hay carreteras y la importancia es alta, casas cerca de carreteras tienen más probabilidad
+                        if (hasRoads && roadImportance > 0) {
+                            const roadBonus = calculateProximityBonus(x, y, searchRadius, roadImportance, (nx, ny) => {
+                                return grid[ny][nx].roadIds.length > 0;
+                            });
+                            probability += roadBonus;
+                        }
+
+                        // Bonus por cercanía a agua (importance/d²)
+                        if (waterImportance > 0) {
+                            const waterBonus = calculateProximityBonus(x, y, searchRadius, waterImportance, (nx, ny) => {
+                                return grid[ny][nx].isWater;
+                            });
+                            probability += waterBonus;
+                        }
+
+                        // Bonus por cercanía a vecinos/casas existentes (importance/d²)
+                        if (neighborImportance > 0) {
+                            const neighborBonus = calculateProximityBonus(x, y, searchRadius, neighborImportance, (nx, ny) => {
+                                return grid[ny][nx].houses.length > 0;
+                            });
+                            probability += neighborBonus;
+                        }
+                    }
+
+                    // Clamp probabilidad entre 0 y 1
+                    probability = Math.max(0, Math.min(1, probability));
+
+                    // Verificar si se genera casa
+                    if (Math.random() > probability) continue;
+
+                    // Determinar cantidad de casas a agregar (sin exceder el máximo)
+                    const maxToAdd = maxHousesPerCell - currentHouseCount;
+                    const numHousesToAdd = Math.min(
+                        Math.floor(Math.random() * maxHousesPerCell) + 1,
+                        maxToAdd
+                    );
+
+                    // Obtener elementos existentes en esta celda
+                    const existingHousesInCell = [
+                        ...cell.houses,
+                        ...newHouses.filter(h => h.cellX === x && h.cellY === y)
+                    ];
+                    const existingRocksInCell = cell.rocks;
+                    const existingTreesInCell = cell.trees;
+
+                    // Intentar colocar cada casa con detección de colisiones
+                    for (let i = 0; i < numHousesToAdd; i++) {
+                        const allHousesInCell = [
+                            ...existingHousesInCell,
+                            ...newHouses.filter(h => h.cellX === x && h.cellY === y)
+                        ];
+
+                        const housePos = tryPlaceHouse(x, y, allHousesInCell, existingRocksInCell, existingTreesInCell);
+
+                        if (housePos) {
+                            newHouses.push({
+                                cellX: x,
+                                cellY: y,
+                                ...housePos
+                            });
+                            totalHouses++;
+                            cellsWithHouses.add(`${x},${y}`);
+                        }
+                    }
+                }
+            }
+
+            if (newHouses.length === 0) {
+                showInfo('No se generaron casas. Intenta aumentar la probabilidad o ajustar los filtros.');
+                return;
+            }
+
+            const houseGroup = {
+                id: houseGroupIdCounter++,
+                name: `Grupo ${houseGroupIdCounter - 1}`,
+                visible: true,
+                count: totalHouses,
+                params: { minHeight, maxHeight, roadImportance, neighborImportance, waterImportance, searchRadius, baseProbability, maxHousesPerCell }
+            };
+
+            houses.push(houseGroup);
+
+            newHouses.forEach(h => {
+                grid[h.cellY][h.cellX].houses.push({
+                    groupId: houseGroup.id,
+                    offsetX: h.offsetX,
+                    offsetY: h.offsetY,
+                    width: h.width,
+                    height: h.height
+                });
+            });
+
+            updateUI();
+            drawGrid();
+            showInfo(`Generadas ${totalHouses} casas en ${cellsWithHouses.size} celdas.`);
+        }
+
+        function deleteHouseGroup(groupId) {
+            const groupIndex = houses.findIndex(g => g.id === groupId);
+            if (groupIndex === -1) return;
+
+            for (let y = 0; y < grid.length; y++) {
+                for (let x = 0; x < grid[y].length; x++) {
+                    grid[y][x].houses = grid[y][x].houses.filter(h => h.groupId !== groupId);
+                }
+            }
+
+            houses.splice(groupIndex, 1);
+            updateUI();
+            drawGrid();
+        }
+
+        function toggleHouseGroupVisibility(groupId) {
+            const group = houses.find(g => g.id === groupId);
+            if (group) {
+                group.visible = !group.visible;
+                updateUI();
+                drawGrid();
+            }
+        }
+
+        function toggleAllHouses(visible) {
+            houses.forEach(g => g.visible = visible);
+            updateUI();
+            drawGrid();
+        }
+
+        function clearAllHouses() {
+            for (let y = 0; y < grid.length; y++) {
+                for (let x = 0; x < grid[y].length; x++) {
+                    grid[y][x].houses = [];
+                }
+            }
+            houses = [];
+            houseGroupIdCounter = 1;
+            updateUI();
+            drawGrid();
+            showInfo('Todas las casas han sido eliminadas.');
+        }
+
+        function clearAll() {
+            roads = [];
+            houses = [];
+            rocks = [];
+            trees = [];
+            roadIdCounter = 1;
+            houseGroupIdCounter = 1;
+            rockGroupIdCounter = 1;
+            treeGroupIdCounter = 1;
+            selectedCells = [];
+
+            for (let y = 0; y < grid.length; y++) {
+                for (let x = 0; x < grid[y].length; x++) {
+                    grid[y][x].roadIds = [];
+                    grid[y][x].houses = [];
+                    grid[y][x].rocks = [];
+                    grid[y][x].trees = [];
+                }
+            }
+
+            updateUI();
+            drawGrid();
+            showInfo('Todo limpiado.');
+        }
+
+        // ============== PIEDRAS ==============
+        // Constantes para piedras
+        const ROCK_MIN_RADIUS_DEFAULT = 0.08;
+        const ROCK_MAX_RADIUS_DEFAULT = 0.25;
+
+        // Verifica si dos círculos se superponen
+        function circlesOverlap(x1, y1, r1, x2, y2, r2) {
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            return distance < (r1 + r2);
+        }
+
+        // Calcula probabilidad de piedra según altura del terreno
+        // Montañas (0.6-0.75): alta probabilidad
+        // Agua (<0.3): 0%
+        // Montañas altas (>0.75): 0%
+        function getRockHeightProbability(noise) {
+            if (noise < 0.3) return 0; // Agua - no piedras
+            if (noise > 0.75) return 0; // Montañas altas - no piedras
+            if (noise >= 0.6 && noise <= 0.75) {
+                // Montañas - alta probabilidad (80-100%)
+                return 0.8 + (noise - 0.6) * 1.33;
+            }
+            if (noise >= 0.5 && noise < 0.6) {
+                // Cerca de montañas - probabilidad media (40-80%)
+                return 0.4 + (noise - 0.5) * 4;
+            }
+            // Tierras bajas - probabilidad baja (10-40%)
+            return 0.1 + (noise - 0.3) * 1.5;
+        }
+
+        // Intenta colocar una piedra sin colisión
+        // Verifica colisiones con otras piedras, casas y árboles
+        function tryPlaceRock(cellX, cellY, existingRocksInCell, existingHousesInCell = [], existingTreesInCell = [], minRadius, maxRadius, maxAttempts = 20) {
+            const radius = minRadius + Math.random() * (maxRadius - minRadius);
+            const margin = radius + 0.02;
+            const availableSpace = 1 - 2 * margin;
+
+            if (availableSpace <= 0) return null;
+
+            for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                const newX = margin + Math.random() * availableSpace;
+                const newY = margin + Math.random() * availableSpace;
+
+                let collision = false;
+
+                // Verificar colisión con piedras existentes
+                for (const existing of existingRocksInCell) {
+                    if (circlesOverlap(newX, newY, radius, existing.offsetX, existing.offsetY, existing.radius)) {
+                        collision = true;
+                        break;
+                    }
+                }
+
+                // Verificar colisión con casas (círculo-rectángulo)
+                if (!collision) {
+                    for (const house of existingHousesInCell) {
+                        const houseW = house.width || HOUSE_WIDTH;
+                        const houseH = house.height || HOUSE_HEIGHT;
+                        if (circleRectOverlap(newX, newY, radius, house.offsetX, house.offsetY, houseW, houseH)) {
+                            collision = true;
+                            break;
+                        }
+                    }
+                }
+
+                // Verificar colisión con árboles (círculo-círculo, usando copa)
+                if (!collision) {
+                    for (const tree of existingTreesInCell) {
+                        const crownRadius = tree.radius * 2.5;
+                        if (circlesOverlap(newX, newY, radius, tree.offsetX, tree.offsetY, crownRadius)) {
+                            collision = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!collision) {
+                    // Generar shade aleatorio para consistencia visual
+                    const shade = 80 + Math.floor(Math.random() * 40);
+                    return { offsetX: newX, offsetY: newY, radius: radius, shade: shade };
+                }
+            }
+
+            return null;
+        }
+
+        function generateRocks() {
+            const baseProbability = parseInt(document.getElementById('rockProbability').value) / 100;
+            const maxRocksPerCell = parseInt(document.getElementById('maxRocksPerCell').value);
+            const minRadius = parseFloat(document.getElementById('rockMinRadius').value);
+            const maxRadius = parseFloat(document.getElementById('rockMaxRadius').value);
+
+            if (!grid || grid.length === 0) {
+                showInfo('Primero genera un terreno.');
+                return;
+            }
+
+            const newRocks = [];
+            let totalRocks = 0;
+            let cellsWithRocks = new Set();
+
+            for (let y = 0; y < grid.length; y++) {
+                for (let x = 0; x < grid[y].length; x++) {
+                    const cell = grid[y][x];
+
+                    // No piedras en agua, montañas altas, carreteras, o celdas con casas
+                    if (cell.isWater) continue;
+                    if (cell.noise > 0.75) continue; // Montañas altas
+                    if (cell.roadIds.length > 0) continue;
+                    if (cell.houses.length > 0) continue;
+
+                    // Verificar límite de piedras por celda
+                    const currentRockCount = cell.rocks.length;
+                    if (currentRockCount >= maxRocksPerCell) continue;
+
+                    // Calcular probabilidad basada en altura
+                    const heightProb = getRockHeightProbability(cell.noise);
+                    const probability = baseProbability * heightProb;
+
+                    if (Math.random() > probability) continue;
+
+                    // Determinar cantidad de piedras a agregar
+                    const maxToAdd = maxRocksPerCell - currentRockCount;
+                    const numRocksToAdd = Math.min(
+                        Math.floor(Math.random() * maxRocksPerCell) + 1,
+                        maxToAdd
+                    );
+
+                    // Obtener elementos existentes
+                    const existingRocksInCell = [
+                        ...cell.rocks,
+                        ...newRocks.filter(r => r.cellX === x && r.cellY === y)
+                    ];
+                    const existingHousesInCell = cell.houses;
+                    const existingTreesInCell = cell.trees;
+
+                    for (let i = 0; i < numRocksToAdd; i++) {
+                        const allRocksInCell = [
+                            ...existingRocksInCell,
+                            ...newRocks.filter(r => r.cellX === x && r.cellY === y)
+                        ];
+
+                        const rockPos = tryPlaceRock(x, y, allRocksInCell, existingHousesInCell, existingTreesInCell, minRadius, maxRadius);
+
+                        if (rockPos) {
+                            newRocks.push({
+                                cellX: x,
+                                cellY: y,
+                                ...rockPos
+                            });
+                            totalRocks++;
+                            cellsWithRocks.add(`${x},${y}`);
+                        }
+                    }
+                }
+            }
+
+            if (newRocks.length === 0) {
+                showInfo('No se generaron piedras. Intenta aumentar la probabilidad.');
+                return;
+            }
+
+            const rockGroup = {
+                id: rockGroupIdCounter++,
+                name: `Piedras ${rockGroupIdCounter - 1}`,
+                visible: true,
+                count: totalRocks
+            };
+
+            rocks.push(rockGroup);
+
+            newRocks.forEach(r => {
+                grid[r.cellY][r.cellX].rocks.push({
+                    groupId: rockGroup.id,
+                    offsetX: r.offsetX,
+                    offsetY: r.offsetY,
+                    radius: r.radius,
+                    shade: r.shade
+                });
+            });
+
+            updateUI();
+            drawGrid();
+            showInfo(`Generadas ${totalRocks} piedras en ${cellsWithRocks.size} celdas.`);
+        }
+
+        function deleteRockGroup(groupId) {
+            const groupIndex = rocks.findIndex(g => g.id === groupId);
+            if (groupIndex === -1) return;
+
+            for (let y = 0; y < grid.length; y++) {
+                for (let x = 0; x < grid[y].length; x++) {
+                    grid[y][x].rocks = grid[y][x].rocks.filter(r => r.groupId !== groupId);
+                }
+            }
+
+            rocks.splice(groupIndex, 1);
+            updateUI();
+            drawGrid();
+        }
+
+        function toggleRockGroupVisibility(groupId) {
+            const group = rocks.find(g => g.id === groupId);
+            if (group) {
+                group.visible = !group.visible;
+                updateUI();
+                drawGrid();
+            }
+        }
+
+        function toggleAllRocks(visible) {
+            rocks.forEach(g => g.visible = visible);
+            updateUI();
+            drawGrid();
+        }
+
+        function clearAllRocks() {
+            for (let y = 0; y < grid.length; y++) {
+                for (let x = 0; x < grid[y].length; x++) {
+                    grid[y][x].rocks = [];
+                }
+            }
+            rocks = [];
+            rockGroupIdCounter = 1;
+            updateUI();
+            drawGrid();
+            showInfo('Todas las piedras han sido eliminadas.');
+        }
+
+        // ============== ÁRBOLES ==============
+        // Constantes para árboles
+        const TREE_MIN_RADIUS_DEFAULT = 0.05;
+        const TREE_MAX_RADIUS_DEFAULT = 0.12;
+
+        // Verifica colisión círculo-rectángulo
+        function circleRectOverlap(cx, cy, radius, rx, ry, rw, rh) {
+            // Encontrar el punto más cercano del rectángulo al centro del círculo
+            const closestX = Math.max(rx, Math.min(cx, rx + rw));
+            const closestY = Math.max(ry, Math.min(cy, ry + rh));
+
+            // Calcular distancia del centro del círculo al punto más cercano
+            const dx = cx - closestX;
+            const dy = cy - closestY;
+            const distanceSquared = dx * dx + dy * dy;
+
+            return distanceSquared < (radius * radius);
+        }
+
+        // Calcula probabilidad de árbol según altura del terreno
+        // Altura ideal: 20% (0.2), menos o más altura reduce probabilidad
+        function getTreeHeightProbability(noise) {
+            if (noise < 0.25) return 0; // Agua y zonas muy bajas - no árboles
+            if (noise > 0.75) return 0; // Montañas altas - no árboles
+
+            // Altura ideal es 0.35 (equivalente a "20%" del rango útil 0.25-0.75)
+            const idealHeight = 0.35;
+            const deviation = Math.abs(noise - idealHeight);
+
+            // Probabilidad máxima en altura ideal, decrece linealmente
+            // A 0.35: 100%, a los extremos (0.25 o 0.75): ~10%
+            const maxDeviation = 0.4; // máxima desviación posible
+            const probability = Math.max(0.1, 1 - (deviation / maxDeviation) * 0.9);
+
+            return probability;
+        }
+
+        // Cuenta casas cercanas a una celda
+        function countNearbyHouses(x, y, radius) {
+            let count = 0;
+            for (let dy = -radius; dy <= radius; dy++) {
+                for (let dx = -radius; dx <= radius; dx++) {
+                    const nx = x + dx;
+                    const ny = y + dy;
+                    if (ny >= 0 && ny < grid.length && nx >= 0 && nx < grid[0].length) {
+                        count += grid[ny][nx].houses.length;
+                    }
+                }
+            }
+            return count;
+        }
+
+        // Intenta colocar un árbol sin colisión con casas, piedras y otros árboles
+        function tryPlaceTree(cellX, cellY, existingTreesInCell, existingHousesInCell, existingRocksInCell = [], minRadius, maxRadius, maxAttempts = 30) {
+            const radius = minRadius + Math.random() * (maxRadius - minRadius);
+            const crownRadius = radius * 2.5; // La copa es más grande
+            const margin = crownRadius + 0.02;
+            const availableSpace = 1 - 2 * margin;
+
+            if (availableSpace <= 0) return null;
+
+            for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                const newX = margin + Math.random() * availableSpace;
+                const newY = margin + Math.random() * availableSpace;
+
+                let collision = false;
+
+                // Verificar colisión con otros árboles
+                for (const existing of existingTreesInCell) {
+                    const existingCrown = existing.radius * 2.5;
+                    if (circlesOverlap(newX, newY, crownRadius, existing.offsetX, existing.offsetY, existingCrown)) {
+                        collision = true;
+                        break;
+                    }
+                }
+
+                // Verificar colisión con casas (círculo-rectángulo)
+                if (!collision) {
+                    for (const house of existingHousesInCell) {
+                        const houseW = house.width || HOUSE_WIDTH;
+                        const houseH = house.height || HOUSE_HEIGHT;
+                        if (circleRectOverlap(newX, newY, crownRadius, house.offsetX, house.offsetY, houseW, houseH)) {
+                            collision = true;
+                            break;
+                        }
+                    }
+                }
+
+                // Verificar colisión con piedras (círculo-círculo)
+                if (!collision) {
+                    for (const rock of existingRocksInCell) {
+                        if (circlesOverlap(newX, newY, crownRadius, rock.offsetX, rock.offsetY, rock.radius)) {
+                            collision = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!collision) {
+                    return { offsetX: newX, offsetY: newY, radius: radius };
+                }
+            }
+
+            return null;
+        }
+
+        function generateTrees() {
+            const baseProbability = parseInt(document.getElementById('treeProbability').value) / 100;
+            const maxTreesPerCell = parseInt(document.getElementById('maxTreesPerCell').value);
+            const minRadius = parseFloat(document.getElementById('treeMinRadius').value);
+            const maxRadius = parseFloat(document.getElementById('treeMaxRadius').value);
+            const casePenalty = parseInt(document.getElementById('treeCasePenalty').value) / 100;
+            const searchRadius = parseInt(document.getElementById('treeSearchRadius').value);
+
+            if (!grid || grid.length === 0) {
+                showInfo('Primero genera un terreno.');
+                return;
+            }
+
+            const newTrees = [];
+            let totalTrees = 0;
+            let cellsWithTrees = new Set();
+
+            for (let y = 0; y < grid.length; y++) {
+                for (let x = 0; x < grid[y].length; x++) {
+                    const cell = grid[y][x];
+
+                    // No árboles en agua, montañas altas, o carreteras
+                    if (cell.isWater) continue;
+                    if (cell.noise > 0.75) continue; // Montañas altas
+                    if (cell.noise < 0.25) continue; // Zonas muy bajas
+                    if (cell.roadIds.length > 0) continue;
+
+                    // Verificar límite de árboles por celda
+                    const currentTreeCount = cell.trees.length;
+                    if (currentTreeCount >= maxTreesPerCell) continue;
+
+                    // Calcular probabilidad basada en altura
+                    const heightProb = getTreeHeightProbability(cell.noise);
+
+                    // Penalización por casas cercanas
+                    const nearbyHouses = countNearbyHouses(x, y, searchRadius);
+                    const housePenalty = Math.max(0, 1 - nearbyHouses * casePenalty);
+
+                    const probability = baseProbability * heightProb * housePenalty;
+
+                    if (Math.random() > probability) continue;
+
+                    // Determinar cantidad de árboles a agregar
+                    const maxToAdd = maxTreesPerCell - currentTreeCount;
+                    const numTreesToAdd = Math.min(
+                        Math.floor(Math.random() * maxTreesPerCell) + 1,
+                        maxToAdd
+                    );
+
+                    // Obtener elementos existentes
+                    const existingTreesInCell = [
+                        ...cell.trees,
+                        ...newTrees.filter(t => t.cellX === x && t.cellY === y)
+                    ];
+                    const existingHousesInCell = cell.houses;
+                    const existingRocksInCell = cell.rocks;
+
+                    for (let i = 0; i < numTreesToAdd; i++) {
+                        const allTreesInCell = [
+                            ...existingTreesInCell,
+                            ...newTrees.filter(t => t.cellX === x && t.cellY === y)
+                        ];
+
+                        const treePos = tryPlaceTree(x, y, allTreesInCell, existingHousesInCell, existingRocksInCell, minRadius, maxRadius);
+
+                        if (treePos) {
+                            newTrees.push({
+                                cellX: x,
+                                cellY: y,
+                                ...treePos
+                            });
+                            totalTrees++;
+                            cellsWithTrees.add(`${x},${y}`);
+                        }
+                    }
+                }
+            }
+
+            if (newTrees.length === 0) {
+                showInfo('No se generaron árboles. Intenta aumentar la probabilidad o reducir penalización.');
+                return;
+            }
+
+            const treeGroup = {
+                id: treeGroupIdCounter++,
+                name: `Árboles ${treeGroupIdCounter - 1}`,
+                visible: true,
+                count: totalTrees
+            };
+
+            trees.push(treeGroup);
+
+            newTrees.forEach(t => {
+                grid[t.cellY][t.cellX].trees.push({
+                    groupId: treeGroup.id,
+                    offsetX: t.offsetX,
+                    offsetY: t.offsetY,
+                    radius: t.radius
+                });
+            });
+
+            updateUI();
+            drawGrid();
+            showInfo(`Generados ${totalTrees} árboles en ${cellsWithTrees.size} celdas.`);
+        }
+
+        function deleteTreeGroup(groupId) {
+            const groupIndex = trees.findIndex(g => g.id === groupId);
+            if (groupIndex === -1) return;
+
+            for (let y = 0; y < grid.length; y++) {
+                for (let x = 0; x < grid[y].length; x++) {
+                    grid[y][x].trees = grid[y][x].trees.filter(t => t.groupId !== groupId);
+                }
+            }
+
+            trees.splice(groupIndex, 1);
+            updateUI();
+            drawGrid();
+        }
+
+        function toggleTreeGroupVisibility(groupId) {
+            const group = trees.find(g => g.id === groupId);
+            if (group) {
+                group.visible = !group.visible;
+                updateUI();
+                drawGrid();
+            }
+        }
+
+        function toggleAllTrees(visible) {
+            trees.forEach(g => g.visible = visible);
+            updateUI();
+            drawGrid();
+        }
+
+        function clearAllTrees() {
+            for (let y = 0; y < grid.length; y++) {
+                for (let x = 0; x < grid[y].length; x++) {
+                    grid[y][x].trees = [];
+                }
+            }
+            trees = [];
+            treeGroupIdCounter = 1;
+            updateUI();
+            drawGrid();
+            showInfo('Todos los árboles han sido eliminados.');
+        }
+
+        // ============== A* PATHFINDING ==============
+        function aStar(start, end, maxHousesToDestroy = null) {
+            // Obtener el valor del input si no se especifica
+            if (maxHousesToDestroy === null) {
+                maxHousesToDestroy = parseInt(document.getElementById('maxHousesToDestroy').value) || 0;
+            }
+
+            const openSet = [start];
+            const cameFrom = new Map();
+            const gScore = new Map();
+            const fScore = new Map();
+
+            const key = (p) => `${p.x},${p.y}`;
+            gScore.set(key(start), 0);
+            fScore.set(key(start), heuristic(start, end));
+
+            while (openSet.length > 0) {
+                openSet.sort((a, b) => fScore.get(key(a)) - fScore.get(key(b)));
+                const current = openSet.shift();
+
+                if (current.x === end.x && current.y === end.y) {
+                    return reconstructPath(cameFrom, current);
+                }
+
+                const neighbors = getNeighbors(current, maxHousesToDestroy);
+                for (let neighbor of neighbors) {
+                    const tentativeGScore = gScore.get(key(current)) + cost(current, neighbor);
+
+                    if (!gScore.has(key(neighbor)) || tentativeGScore < gScore.get(key(neighbor))) {
+                        cameFrom.set(key(neighbor), current);
+                        gScore.set(key(neighbor), tentativeGScore);
+                        fScore.set(key(neighbor), tentativeGScore + heuristic(neighbor, end));
+
+                        if (!openSet.some(p => p.x === neighbor.x && p.y === neighbor.y)) {
+                            openSet.push(neighbor);
+                        }
+                    }
+                }
+            }
+
+            return [];
+        }
+
+        function heuristic(a, b) {
+            return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+        }
+
+        function cost(a, b) {
+            if (!grid || !grid[a.y] || !grid[b.y]) return 1;
+            const heightDiff = Math.abs(grid[a.y][a.x].noise - grid[b.y][b.x].noise);
+            // Costo base + diferencia de altura + costo por destruir casas
+            const houseCost = getHouseDestroyCost(b.x, b.y);
+            return 1 + heightDiff * 5 + houseCost;
+        }
+
+        function getNeighbors(cell, maxHousesToDestroy) {
+            if (!grid || grid.length === 0) return [];
+
+            const neighbors = [];
+            const dirs = [{ x: 0, y: -1 }, { x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }];
+
+            for (let dir of dirs) {
+                const nx = cell.x + dir.x;
+                const ny = cell.y + dir.y;
+                if (ny >= 0 && ny < grid.length && nx >= 0 && nx < grid[0].length) {
+                    // Vecinos que pueden ser carretera (pasables y con casas <= máximo destruible)
+                    if (canBeRoad(nx, ny, maxHousesToDestroy)) {
+                        neighbors.push({ x: nx, y: ny });
+                    }
+                }
+            }
+            return neighbors;
+        }
+
+        function reconstructPath(cameFrom, current) {
+            const path = [current];
+            const key = (p) => `${p.x},${p.y}`;
+
+            while (cameFrom.has(key(current))) {
+                current = cameFrom.get(key(current));
+                path.unshift(current);
+            }
+            return path;
+        }
+
+        // ============== UI ==============
+        function updateUI() {
+            updateRoadsList();
+            updateHousesList();
+            updateRocksList();
+            updateTreesList();
+            updateStats();
+        }
+
+        function updateRoadsList() {
+            const container = document.getElementById('roadsList');
+            if (roads.length === 0) {
+                container.innerHTML = '<div style="color: #666; font-size: 12px; text-align: center; padding: 10px;">No hay carreteras</div>';
+                return;
+            }
+
+            container.innerHTML = roads.map(road => `
+                <div class="entity-item">
+                    <div class="entity-color" style="background: ${road.color};"></div>
+                    <span class="name" title="${road.name}: ${road.cells.length} celdas">${road.name} (${road.cells.length})</span>
+                    <button class="visibility-btn small ${road.visible ? '' : 'secondary'}" onclick="toggleRoadVisibility(${road.id})">
+                        ${road.visible ? '👁️' : '🙈'}
+                    </button>
+                    <button class="delete-btn small danger" onclick="deleteRoad(${road.id})">🗑️</button>
+                </div>
+            `).join('');
+        }
+
+        function updateHousesList() {
+            const container = document.getElementById('housesList');
+            if (houses.length === 0) {
+                container.innerHTML = '<div style="color: #666; font-size: 12px; text-align: center; padding: 10px;">No hay casas</div>';
+                return;
+            }
+
+            container.innerHTML = houses.map(group => `
+                <div class="entity-item">
+                    <div class="entity-color" style="background: #e74c3c;"></div>
+                    <span class="name" title="${group.name}: ${group.count} casas">${group.name} (${group.count})</span>
+                    <button class="visibility-btn small ${group.visible ? '' : 'secondary'}" onclick="toggleHouseGroupVisibility(${group.id})">
+                        ${group.visible ? '👁️' : '🙈'}
+                    </button>
+                    <button class="delete-btn small danger" onclick="deleteHouseGroup(${group.id})">🗑️</button>
+                </div>
+            `).join('');
+        }
+
+        function updateRocksList() {
+            const container = document.getElementById('rocksList');
+            if (rocks.length === 0) {
+                container.innerHTML = '<div style="color: #666; font-size: 12px; text-align: center; padding: 10px;">No hay piedras</div>';
+                return;
+            }
+
+            container.innerHTML = rocks.map(group => `
+                <div class="entity-item">
+                    <div class="entity-color" style="background: #6b6b6b; border-radius: 50%;"></div>
+                    <span class="name" title="${group.name}: ${group.count} piedras">${group.name} (${group.count})</span>
+                    <button class="visibility-btn small ${group.visible ? '' : 'secondary'}" onclick="toggleRockGroupVisibility(${group.id})">
+                        ${group.visible ? '👁️' : '🙈'}
+                    </button>
+                    <button class="delete-btn small danger" onclick="deleteRockGroup(${group.id})">🗑️</button>
+                </div>
+            `).join('');
+        }
+
+        function updateTreesList() {
+            const container = document.getElementById('treesList');
+            if (trees.length === 0) {
+                container.innerHTML = '<div style="color: #666; font-size: 12px; text-align: center; padding: 10px;">No hay árboles</div>';
+                return;
+            }
+
+            container.innerHTML = trees.map(group => `
+                <div class="entity-item">
+                    <div class="entity-color" style="background: #228B22; border-radius: 50%;"></div>
+                    <span class="name" title="${group.name}: ${group.count} árboles">${group.name} (${group.count})</span>
+                    <button class="visibility-btn small ${group.visible ? '' : 'secondary'}" onclick="toggleTreeGroupVisibility(${group.id})">
+                        ${group.visible ? '👁️' : '🙈'}
+                    </button>
+                    <button class="delete-btn small danger" onclick="deleteTreeGroup(${group.id})">🗑️</button>
+                </div>
+            `).join('');
+        }
+
+        function updateStats() {
+            const totalRoadCells = roads.reduce((sum, r) => sum + r.cells.length, 0);
+            const totalHouses = houses.reduce((sum, g) => sum + g.count, 0);
+            const totalRocks = rocks.reduce((sum, g) => sum + g.count, 0);
+            const totalTrees = trees.reduce((sum, g) => sum + g.count, 0);
+            const totalCells = grid.length > 0 ? grid.length * grid[0].length : 0;
+
+            document.getElementById('statsRoads').textContent = `Carreteras: ${roads.length} (${totalRoadCells} celdas)`;
+            document.getElementById('statsHouses').textContent = `Casas: ${totalHouses}`;
+            document.getElementById('statsRocks').textContent = `Piedras: ${totalRocks}`;
+            document.getElementById('statsTrees').textContent = `Árboles: ${totalTrees}`;
+            document.getElementById('statsCells').textContent = `Celdas: ${totalCells}`;
+        }
+
+        function showInfo(message) {
+            document.getElementById('roadInfo').textContent = message;
+        }
+
+        // ============== INICIALIZACIÓN ==============
+        window.addEventListener('load', function () {
+            generateGrid();
+
+            const canvas = document.getElementById('gridCanvas');
+            canvas.addEventListener('click', handleCanvasClick);
+        });
+    </script>
+</body>
+</html>
