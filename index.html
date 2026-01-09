@@ -9,6 +9,11 @@
             box-sizing: border-box;
         }
 
+        html,
+        body {
+            overflow-x: hidden;
+        }
+
         body {
             margin: 0;
             padding: 20px;
@@ -34,6 +39,8 @@
 
         .right-panel {
             flex: 1;
+            min-width: 0;
+            max-width: calc(100vw - 400px);
             display: flex;
             flex-direction: column;
             gap: 15px;
@@ -109,7 +116,8 @@
         }
 
         input[type="number"],
-        input[type="text"] {
+        input[type="text"],
+        select {
             padding: 6px 10px;
             border-radius: 6px;
             border: 1px solid rgba(100, 100, 150, 0.5);
@@ -117,6 +125,16 @@
             color: #e8e8e8;
             width: 70px;
             font-size: 13px;
+        }
+
+        select {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        select option {
+            background: rgba(20, 20, 40, 0.95);
+            color: #e8e8e8;
         }
 
         input:focus {
@@ -133,16 +151,82 @@
             color: #b0b0b0;
         }
 
-        canvas {
+        .canvas-container {
+            position: relative;
+            overflow: hidden;
             border: 2px solid rgba(0, 212, 255, 0.3);
             border-radius: 8px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-            cursor: pointer;
+            background: #0a0a15;
+            min-height: 400px;
+            max-height: 70vh;
+        }
+
+        .canvas-container.road-mode {
+            border-color: #ff9800;
+        }
+
+        canvas {
+            cursor: grab;
+            transform-origin: 0 0;
+            /* Crisp pixel rendering when canvas is scaled up */
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
+        canvas:active {
+            cursor: grabbing;
         }
 
         canvas.road-mode {
             cursor: crosshair;
-            border-color: #ff9800;
+        }
+
+        .zoom-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 10px;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 6px;
+        }
+
+        .zoom-controls button {
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .zoom-controls span {
+            min-width: 60px;
+            text-align: center;
+            font-size: 12px;
+            color: #b0b0b0;
+        }
+
+        .zoom-controls .zoom-slider {
+            flex: 1;
+            height: 4px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: rgba(0, 212, 255, 0.3);
+            border-radius: 2px;
+            outline: none;
+        }
+
+        .zoom-controls .zoom-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            background: #00d4ff;
+            border-radius: 50%;
+            cursor: pointer;
         }
 
         .entity-list {
@@ -348,11 +432,16 @@
                 <div class="terrain-params">
                     <label>
                         Ancho:
-                        <input type="number" id="width" value="100" min="10" max="200">
+                        <input type="number" id="width" value="100" min="10" max="500">
                     </label>
                     <label>
                         Alto:
-                        <input type="number" id="height" value="50" min="10" max="100">
+                        <input type="number" id="height" value="50" min="10" max="500">
+                    </label>
+                    <label class="tooltip"
+                        data-tooltip="Tamaño de cada celda en píxeles. Afecta el tamaño visual del mapa.">
+                        Tamaño celda:
+                        <input type="number" id="cellSizeInput" value="128" min="4" max="256">
                     </label>
                     <label>
                         Escala:
@@ -371,6 +460,17 @@
                         data-tooltip="Cuánto aumenta el detalle en cada octava. Con 0, no hay detalle extra y el terreno es más uniforme.">
                         Lacunaridad:
                         <input type="number" id="lacunarity" value="0" min="0" max="4" step="0.1">
+                    </label>
+                    <label class="tooltip"
+                        data-tooltip="Resolución del canvas. Menor = mejor rendimiento. Ej: con 128px celda y 100 celdas, 10% = 1280px canvas en vez de 12800px">
+                        Resolución canvas:
+                        <select id="renderScaleSelect" onchange="setRenderScale(this.value)">
+                            <option value="1">100% (Full)</option>
+                            <option value="0.5">50%</option>
+                            <option value="0.25">25%</option>
+                            <option value="0.1" selected>10% (Default)</option>
+                            <option value="0.05">5% (Fastest)</option>
+                        </select>
                     </label>
                 </div>
                 <button style="margin-top: 10px; width: 100%;" onclick="generateGrid()">🔄 Generar Terreno</button>
@@ -551,12 +651,31 @@
                     <button class="danger" onclick="clearAll()">⚠️ Limpiar Todo</button>
                 </div>
             </div>
+
+            <!-- Exportar -->
+            <div class="panel">
+                <h3>💾 Exportar</h3>
+                <div class="info-text" style="margin-bottom: 10px;">
+                    Exporta el mapa completo con grilla, entidades y parámetros de generación.
+                </div>
+                <button style="width: 100%;" onclick="exportMapData()">📥 Exportar JSON</button>
+            </div>
         </div>
 
         <!-- Panel derecho: Canvas y leyenda -->
         <div class="right-panel">
             <div class="panel">
-                <canvas id="gridCanvas"></canvas>
+                <div class="canvas-container" id="canvasContainer">
+                    <canvas id="gridCanvas"></canvas>
+                </div>
+                <div class="zoom-controls">
+                    <button onclick="zoomOut()" title="Alejar">➖</button>
+                    <input type="range" class="zoom-slider" id="zoomSlider" min="10" max="300" value="100"
+                        onchange="setZoom(this.value)">
+                    <button onclick="zoomIn()" title="Acercar">➕</button>
+                    <span id="zoomLevel">100%</span>
+                    <button class="secondary" onclick="resetView()" title="Restablecer vista">🔄</button>
+                </div>
                 <div id="roadInfo" style="margin-top: 10px;">Genera un terreno para comenzar.</div>
                 <div class="stats" style="margin-top: 10px;">
                     <span id="statsRoads">Carreteras: 0</span>
@@ -683,10 +802,22 @@
         let rockGroupIdCounter = 1;
         let treeGroupIdCounter = 1;
 
-        const cellSize = 12;
+        let cellSize = 12;
         const MIN_PASSABLE = 0.25;
         const MAX_PASSABLE = 0.75;
         const WATER_THRESHOLD = 0.3; // Por debajo de esto es agua
+
+        // Estado de zoom y pan
+        let zoom = 1;
+        let panX = 0;
+        let panY = 0;
+        let isPanning = false;
+        let lastPanX = 0;
+        let lastPanY = 0;
+
+        // Render scale - canvas pixel resolution (1 = full, 0.1 = 10% pixels)
+        // E.g., with cellSize=128 and 100 cells, full = 12800px canvas, 0.1 = 1280px canvas
+        let renderScale = 0.1; // Default 10% resolution for performance
 
         const roadColors = [
             '#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4',
@@ -701,6 +832,7 @@
             const octaves = parseInt(document.getElementById('octaves').value);
             const persistence = parseFloat(document.getElementById('persistence').value);
             const lacunarity = parseFloat(document.getElementById('lacunarity').value);
+            cellSize = parseInt(document.getElementById('cellSizeInput').value) || 12;
 
             simplex = new SimplexNoise();
             grid = [];
@@ -712,6 +844,12 @@
             houseGroupIdCounter = 1;
             rockGroupIdCounter = 1;
             treeGroupIdCounter = 1;
+
+            // Reset zoom and pan
+            zoom = 1;
+            panX = 0;
+            panY = 0;
+            updateZoomUI();
 
             for (let y = 0; y < h; y++) {
                 grid[y] = [];
@@ -759,6 +897,104 @@
             return '#90EE90';
         }
 
+        // ============== ZOOM Y PAN ==============
+        function updateZoomUI() {
+            const zoomPercent = Math.round(zoom * 100);
+            document.getElementById('zoomLevel').textContent = `${zoomPercent}%`;
+            document.getElementById('zoomSlider').value = zoomPercent;
+        }
+
+        function setZoom(percent) {
+            zoom = percent / 100;
+            updateZoomUI();
+            applyTransform();
+        }
+
+        function zoomIn() {
+            zoom = Math.min(3, zoom + 0.1);
+            updateZoomUI();
+            applyTransform();
+        }
+
+        function zoomOut() {
+            zoom = Math.max(0.1, zoom - 0.1);
+            updateZoomUI();
+            applyTransform();
+        }
+
+        function resetView() {
+            zoom = 1;
+            panX = 0;
+            panY = 0;
+            updateZoomUI();
+            applyTransform();
+        }
+
+        function applyTransform() {
+            const canvas = document.getElementById('gridCanvas');
+            canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+        }
+
+        function setRenderScale(value) {
+            renderScale = parseFloat(value);
+            drawGrid();
+        }
+
+        function handleWheel(event) {
+            event.preventDefault();
+
+            const container = document.getElementById('canvasContainer');
+            const rect = container.getBoundingClientRect();
+
+            // Mouse position relative to container
+            const mouseX = event.clientX - rect.left;
+            const mouseY = event.clientY - rect.top;
+
+            // Old zoom
+            const oldZoom = zoom;
+
+            // Calculate new zoom
+            const delta = event.deltaY > 0 ? -0.1 : 0.1;
+            zoom = Math.max(0.1, Math.min(3, zoom + delta));
+
+            // Adjust pan to zoom towards mouse position
+            const zoomRatio = zoom / oldZoom;
+            panX = mouseX - (mouseX - panX) * zoomRatio;
+            panY = mouseY - (mouseY - panY) * zoomRatio;
+
+            updateZoomUI();
+            applyTransform();
+        }
+
+        function handlePanStart(event) {
+            // Don't pan in road mode or if right-clicking
+            if (roadMode || event.button !== 0) return;
+
+            isPanning = true;
+            lastPanX = event.clientX;
+            lastPanY = event.clientY;
+            event.preventDefault();
+        }
+
+        function handlePanMove(event) {
+            if (!isPanning) return;
+
+            const deltaX = event.clientX - lastPanX;
+            const deltaY = event.clientY - lastPanY;
+
+            panX += deltaX;
+            panY += deltaY;
+
+            lastPanX = event.clientX;
+            lastPanY = event.clientY;
+
+            applyTransform();
+        }
+
+        function handlePanEnd() {
+            isPanning = false;
+        }
+
         // ============== DIBUJADO ==============
         function drawGrid() {
             if (!grid || grid.length === 0 || !grid[0]) return;
@@ -766,8 +1002,27 @@
             const canvas = document.getElementById('gridCanvas');
             const ctx = canvas.getContext('2d');
 
-            canvas.width = grid[0].length * cellSize;
-            canvas.height = grid.length * cellSize;
+            // Calculate scaled dimensions
+            // renderScale reduces the actual canvas pixels (e.g., 0.1 = 10% of full resolution)
+            const scaledCellSize = cellSize * renderScale;
+            const fullWidth = grid[0].length * cellSize;
+            const fullHeight = grid.length * cellSize;
+            const canvasWidth = Math.ceil(grid[0].length * scaledCellSize);
+            const canvasHeight = Math.ceil(grid.length * scaledCellSize);
+
+            // Set canvas to scaled size
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+
+            // Use CSS to scale canvas back to full visual size
+            canvas.style.width = fullWidth + 'px';
+            canvas.style.height = fullHeight + 'px';
+
+            // Apply pan and zoom transform
+            applyTransform();
+
+            // Use scaled cell size for all drawing
+            const cs = scaledCellSize;
 
             for (let y = 0; y < grid.length; y++) {
                 for (let x = 0; x < grid[y].length; x++) {
@@ -776,13 +1031,13 @@
 
                     // Dibujar terreno base
                     ctx.fillStyle = getTerrainColor(cell.noise);
-                    ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+                    ctx.fillRect(x * cs, y * cs, cs, cs);
 
                     // Dibujar carretera si hay alguna visible
                     const visibleRoad = roads.find(r => r.visible && r.cells.some(c => c.x === x && c.y === y));
                     if (visibleRoad) {
                         ctx.fillStyle = visibleRoad.color;
-                        ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+                        ctx.fillRect(x * cs, y * cs, cs, cs);
                     }
 
                     // Dibujar casas (solo si no hay carretera visible)
@@ -795,10 +1050,10 @@
                         if (visibleHouses.length > 0) {
                             visibleHouses.forEach(house => {
                                 // Usar dimensiones de la casa o valores por defecto
-                                const houseW = (house.width || HOUSE_WIDTH) * cellSize;
-                                const houseH = (house.height || HOUSE_HEIGHT) * cellSize;
-                                const hx = x * cellSize + house.offsetX * cellSize;
-                                const hy = y * cellSize + house.offsetY * cellSize;
+                                const houseW = (house.width || HOUSE_WIDTH) * cs;
+                                const houseH = (house.height || HOUSE_HEIGHT) * cs;
+                                const hx = x * cs + house.offsetX * cs;
+                                const hy = y * cs + house.offsetY * cs;
 
                                 // Cuerpo de la casa (rectángulo)
                                 ctx.fillStyle = '#e74c3c';
@@ -814,7 +1069,7 @@
 
                                 // Borde de la casa
                                 ctx.strokeStyle = '#922b21';
-                                ctx.lineWidth = 0.5;
+                                ctx.lineWidth = Math.max(0.5, cs * 0.04);
                                 ctx.strokeRect(hx, hy, houseW, houseH);
                             });
                         }
@@ -828,9 +1083,9 @@
                         });
 
                         visibleRocks.forEach(rock => {
-                            const rx = x * cellSize + rock.offsetX * cellSize;
-                            const ry = y * cellSize + rock.offsetY * cellSize;
-                            const rRadius = rock.radius * cellSize;
+                            const rx = x * cs + rock.offsetX * cs;
+                            const ry = y * cs + rock.offsetY * cs;
+                            const rRadius = rock.radius * cs;
 
                             // Sombra de la piedra
                             ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
@@ -853,7 +1108,7 @@
 
                             // Borde
                             ctx.strokeStyle = '#4a4a4a';
-                            ctx.lineWidth = 0.5;
+                            ctx.lineWidth = Math.max(0.5, cs * 0.04);
                             ctx.beginPath();
                             ctx.arc(rx, ry, rRadius, 0, Math.PI * 2);
                             ctx.stroke();
@@ -867,9 +1122,9 @@
                     });
 
                     visibleTrees.forEach(tree => {
-                        const tx = x * cellSize + tree.offsetX * cellSize;
-                        const ty = y * cellSize + tree.offsetY * cellSize;
-                        const tRadius = tree.radius * cellSize;
+                        const tx = x * cs + tree.offsetX * cs;
+                        const ty = y * cs + tree.offsetY * cs;
+                        const tRadius = tree.radius * cs;
                         const crownRadius = tRadius * 2.5; // Copa del árbol más grande que el tronco
 
                         // Sombra del árbol
@@ -898,7 +1153,7 @@
 
                         // Borde de la copa
                         ctx.strokeStyle = '#0d3d0d';
-                        ctx.lineWidth = 0.5;
+                        ctx.lineWidth = Math.max(0.5, cs * 0.04);
                         ctx.beginPath();
                         ctx.arc(tx, ty, crownRadius, 0, Math.PI * 2);
                         ctx.stroke();
@@ -907,14 +1162,15 @@
                     // Borde de selección
                     if (isSelected) {
                         ctx.strokeStyle = '#FF00FF';
-                        ctx.lineWidth = 2;
-                        ctx.strokeRect(x * cellSize + 1, y * cellSize + 1, cellSize - 2, cellSize - 2);
+                        ctx.lineWidth = Math.max(2, cs * 0.08);
+                        const selOffset = Math.max(1, cs * 0.04);
+                        ctx.strokeRect(x * cs + selOffset, y * cs + selOffset, cs - 2 * selOffset, cs - 2 * selOffset);
                     }
 
                     // Borde de celda
                     ctx.strokeStyle = 'rgba(0,0,0,0.2)';
-                    ctx.lineWidth = 1;
-                    ctx.strokeRect(x * cellSize, y * cellSize, cellSize, cellSize);
+                    ctx.lineWidth = Math.max(1, cs * 0.02);
+                    ctx.strokeRect(x * cs, y * cs, cs, cs);
                 }
             }
 
@@ -927,16 +1183,19 @@
             selectedCells = [];
 
             const canvas = document.getElementById('gridCanvas');
+            const container = document.getElementById('canvasContainer');
             const modeStatus = document.getElementById('modeStatus');
             const btn = document.getElementById('roadModeBtn');
 
             if (roadMode) {
                 canvas.classList.add('road-mode');
+                container.classList.add('road-mode');
                 modeStatus.textContent = 'ON';
                 btn.classList.add('active');
                 showInfo('Modo carretera activado. Haz clic en 2 celdas pasables (sin casas) para crear una carretera.');
             } else {
                 canvas.classList.remove('road-mode');
+                container.classList.remove('road-mode');
                 modeStatus.textContent = 'OFF';
                 btn.classList.remove('active');
                 showInfo('Modo carretera desactivado.');
@@ -984,9 +1243,19 @@
             if (!roadMode || !grid || grid.length === 0) return;
 
             const canvas = document.getElementById('gridCanvas');
-            const rect = canvas.getBoundingClientRect();
-            const x = Math.floor((event.clientX - rect.left) / cellSize);
-            const y = Math.floor((event.clientY - rect.top) / cellSize);
+            const container = document.getElementById('canvasContainer');
+            const rect = container.getBoundingClientRect();
+
+            // Account for pan and zoom
+            const mouseX = event.clientX - rect.left;
+            const mouseY = event.clientY - rect.top;
+
+            // Convert to canvas coordinates (reverse transform)
+            const canvasX = (mouseX - panX) / zoom;
+            const canvasY = (mouseY - panY) / zoom;
+
+            const x = Math.floor(canvasX / cellSize);
+            const y = Math.floor(canvasY / cellSize);
 
             if (y >= 0 && y < grid.length && x >= 0 && x < grid[0].length) {
                 if (!canBeRoad(x, y)) {
@@ -1935,6 +2204,171 @@
             showInfo('Todos los árboles han sido eliminados.');
         }
 
+        // ============== EXPORTAR DATOS ==============
+        function exportMapData() {
+            if (!grid || grid.length === 0) {
+                showInfo('No hay mapa para exportar. Genera un terreno primero.');
+                return;
+            }
+
+            // 1. Parámetros de generación
+            const parameters = {
+                width: parseInt(document.getElementById('width').value),
+                height: parseInt(document.getElementById('height').value),
+                cellSize: cellSize,
+                scale: parseFloat(document.getElementById('scale').value),
+                octaves: parseInt(document.getElementById('octaves').value),
+                persistence: parseFloat(document.getElementById('persistence').value),
+                lacunarity: parseFloat(document.getElementById('lacunarity').value),
+                minPassable: MIN_PASSABLE,
+                maxPassable: MAX_PASSABLE,
+                waterThreshold: WATER_THRESHOLD
+            };
+
+            // 2. Grid como array de arrays con altitude y passable
+            const gridData = [];
+            for (let y = 0; y < grid.length; y++) {
+                const row = [];
+                for (let x = 0; x < grid[y].length; x++) {
+                    const cell = grid[y][x];
+                    row.push({
+                        altitude: parseFloat(cell.noise.toFixed(4)),
+                        passable: cell.isPassable,
+                        isWater: cell.isWater,
+                        hasRoad: cell.roadIds.length > 0
+                    });
+                }
+                gridData.push(row);
+            }
+
+            // 3. Entidades
+            // Casas
+            const housesData = [];
+            for (let y = 0; y < grid.length; y++) {
+                for (let x = 0; x < grid[y].length; x++) {
+                    grid[y][x].houses.forEach(house => {
+                        const worldX = (x + house.offsetX) * cellSize;
+                        const worldY = (y + house.offsetY) * cellSize;
+                        housesData.push({
+                            cellX: x,
+                            cellY: y,
+                            offsetX: parseFloat(house.offsetX.toFixed(4)),
+                            offsetY: parseFloat(house.offsetY.toFixed(4)),
+                            width: parseFloat((house.width || HOUSE_WIDTH).toFixed(4)),
+                            height: parseFloat((house.height || HOUSE_HEIGHT).toFixed(4)),
+                            worldX: parseFloat(worldX.toFixed(2)),
+                            worldY: parseFloat(worldY.toFixed(2))
+                        });
+                    });
+                }
+            }
+
+            // Árboles (con radius y height derivada)
+            const treesData = [];
+            for (let y = 0; y < grid.length; y++) {
+                for (let x = 0; x < grid[y].length; x++) {
+                    grid[y][x].trees.forEach(tree => {
+                        const crownRadius = tree.radius * 2.5;
+                        // Altura del árbol: proporcional al radio (aproximadamente 4x el radio de copa)
+                        const treeHeight = crownRadius * 4;
+                        const worldX = (x + tree.offsetX) * cellSize;
+                        const worldY = (y + tree.offsetY) * cellSize;
+                        treesData.push({
+                            cellX: x,
+                            cellY: y,
+                            offsetX: parseFloat(tree.offsetX.toFixed(4)),
+                            offsetY: parseFloat(tree.offsetY.toFixed(4)),
+                            radius: parseFloat(tree.radius.toFixed(4)),
+                            crownRadius: parseFloat(crownRadius.toFixed(4)),
+                            height: parseFloat(treeHeight.toFixed(4)),
+                            worldX: parseFloat(worldX.toFixed(2)),
+                            worldY: parseFloat(worldY.toFixed(2))
+                        });
+                    });
+                }
+            }
+
+            // Piedras
+            const rocksData = [];
+            for (let y = 0; y < grid.length; y++) {
+                for (let x = 0; x < grid[y].length; x++) {
+                    grid[y][x].rocks.forEach(rock => {
+                        const worldX = (x + rock.offsetX) * cellSize;
+                        const worldY = (y + rock.offsetY) * cellSize;
+                        rocksData.push({
+                            cellX: x,
+                            cellY: y,
+                            offsetX: parseFloat(rock.offsetX.toFixed(4)),
+                            offsetY: parseFloat(rock.offsetY.toFixed(4)),
+                            radius: parseFloat(rock.radius.toFixed(4)),
+                            worldX: parseFloat(worldX.toFixed(2)),
+                            worldY: parseFloat(worldY.toFixed(2))
+                        });
+                    });
+                }
+            }
+
+            // Carreteras
+            const roadsData = roads.map(road => ({
+                id: road.id,
+                name: road.name,
+                start: {
+                    x: road.start.x,
+                    y: road.start.y,
+                    worldX: road.start.x * cellSize,
+                    worldY: road.start.y * cellSize
+                },
+                end: {
+                    x: road.end.x,
+                    y: road.end.y,
+                    worldX: road.end.x * cellSize,
+                    worldY: road.end.y * cellSize
+                },
+                cells: road.cells.map(c => ({
+                    x: c.x,
+                    y: c.y,
+                    worldX: c.x * cellSize,
+                    worldY: c.y * cellSize
+                }))
+            }));
+
+            // Construir objeto final
+            const mapData = {
+                parameters: parameters,
+                grid: gridData,
+                entities: {
+                    houses: housesData,
+                    trees: treesData,
+                    rocks: rocksData,
+                    roads: roadsData
+                },
+                metadata: {
+                    exportDate: new Date().toISOString(),
+                    gridWidth: grid[0].length,
+                    gridHeight: grid.length,
+                    totalHouses: housesData.length,
+                    totalTrees: treesData.length,
+                    totalRocks: rocksData.length,
+                    totalRoads: roadsData.length
+                }
+            };
+
+            // Descargar como JSON
+            const jsonString = JSON.stringify(mapData, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `map_${parameters.width}x${parameters.height}_${Date.now()}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            showInfo(`Mapa exportado: ${housesData.length} casas, ${treesData.length} árboles, ${rocksData.length} piedras, ${roadsData.length} carreteras.`);
+        }
+
         // ============== A* PATHFINDING ==============
         function aStar(start, end, maxHousesToDestroy = null) {
             // Obtener el valor del input si no se especifica
@@ -2128,7 +2562,21 @@
             generateGrid();
 
             const canvas = document.getElementById('gridCanvas');
+            const container = document.getElementById('canvasContainer');
+
+            // Click handler for road mode
             canvas.addEventListener('click', handleCanvasClick);
+
+            // Zoom with mouse wheel
+            container.addEventListener('wheel', handleWheel, { passive: false });
+
+            // Pan with mouse drag
+            canvas.addEventListener('mousedown', handlePanStart);
+            window.addEventListener('mousemove', handlePanMove);
+            window.addEventListener('mouseup', handlePanEnd);
+
+            // Prevent context menu on canvas
+            canvas.addEventListener('contextmenu', (e) => e.preventDefault());
         });
     </script>
 </body>
