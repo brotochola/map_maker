@@ -670,11 +670,11 @@
                 </div>
                 <div class="zoom-controls">
                     <button onclick="zoomOut()" title="Alejar">➖</button>
-                    <input type="range" class="zoom-slider" id="zoomSlider" min="10" max="300" value="100"
+                    <input type="range" class="zoom-slider" id="zoomSlider" min="1" max="300" value="100"
                         onchange="setZoom(this.value)">
                     <button onclick="zoomIn()" title="Acercar">➕</button>
                     <span id="zoomLevel">100%</span>
-                    <button class="secondary" onclick="resetView()" title="Restablecer vista">🔄</button>
+                    <button class="secondary" onclick="fitToView()" title="Ajustar a la vista">🔄</button>
                 </div>
                 <div id="roadInfo" style="margin-top: 10px;">Genera un terreno para comenzar.</div>
                 <div class="stats" style="margin-top: 10px;">
@@ -845,11 +845,7 @@
             rockGroupIdCounter = 1;
             treeGroupIdCounter = 1;
 
-            // Reset zoom and pan
-            zoom = 1;
-            panX = 0;
-            panY = 0;
-            updateZoomUI();
+            // Will fit to view after drawing
 
             for (let y = 0; y < h; y++) {
                 grid[y] = [];
@@ -885,6 +881,7 @@
 
             updateUI();
             drawGrid();
+            fitToView();
             showInfo('Terreno generado. Activa el modo carretera para crear caminos.');
         }
 
@@ -898,6 +895,22 @@
         }
 
         // ============== ZOOM Y PAN ==============
+        function getMinZoom() {
+            if (!grid || grid.length === 0 || !grid[0]) return 0.1;
+
+            const container = document.getElementById('canvasContainer');
+            const containerRect = container.getBoundingClientRect();
+
+            const fullWidth = grid[0].length * cellSize;
+            const fullHeight = grid.length * cellSize;
+
+            const padding = 20;
+            const zoomX = (containerRect.width - padding * 2) / fullWidth;
+            const zoomY = (containerRect.height - padding * 2) / fullHeight;
+
+            return Math.min(zoomX, zoomY);
+        }
+
         function updateZoomUI() {
             const zoomPercent = Math.round(zoom * 100);
             document.getElementById('zoomLevel').textContent = `${zoomPercent}%`;
@@ -905,7 +918,8 @@
         }
 
         function setZoom(percent) {
-            zoom = percent / 100;
+            const minZoom = getMinZoom();
+            zoom = Math.max(minZoom, percent / 100);
             updateZoomUI();
             applyTransform();
         }
@@ -917,7 +931,8 @@
         }
 
         function zoomOut() {
-            zoom = Math.max(0.1, zoom - 0.1);
+            const minZoom = getMinZoom();
+            zoom = Math.max(minZoom, zoom - 0.1);
             updateZoomUI();
             applyTransform();
         }
@@ -926,6 +941,29 @@
             zoom = 1;
             panX = 0;
             panY = 0;
+            updateZoomUI();
+            applyTransform();
+        }
+
+        function fitToView() {
+            if (!grid || grid.length === 0 || !grid[0]) return;
+
+            const container = document.getElementById('canvasContainer');
+            const containerRect = container.getBoundingClientRect();
+
+            // Calculate full canvas dimensions
+            const fullWidth = grid[0].length * cellSize;
+            const fullHeight = grid.length * cellSize;
+
+            // Use the minimum zoom that fits the whole map
+            zoom = Math.min(getMinZoom(), 1); // Cap at 100% max
+
+            // Center the map
+            const scaledWidth = fullWidth * zoom;
+            const scaledHeight = fullHeight * zoom;
+            panX = (containerRect.width - scaledWidth) / 2;
+            panY = (containerRect.height - scaledHeight) / 2;
+
             updateZoomUI();
             applyTransform();
         }
@@ -955,7 +993,8 @@
 
             // Calculate new zoom
             const delta = event.deltaY > 0 ? -0.1 : 0.1;
-            zoom = Math.max(0.1, Math.min(3, zoom + delta));
+            const minZoom = getMinZoom();
+            zoom = Math.max(minZoom, Math.min(3, zoom + delta));
 
             // Adjust pan to zoom towards mouse position
             const zoomRatio = zoom / oldZoom;
