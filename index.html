@@ -418,6 +418,45 @@
             margin-bottom: 8px;
             font-weight: 600;
         }
+
+        .material-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px;
+            background: rgba(40, 40, 60, 0.6);
+            border-radius: 4px;
+            font-size: 11px;
+        }
+
+        .material-item input[type="number"] {
+            width: 50px;
+            padding: 4px 6px;
+            font-size: 11px;
+        }
+
+        .material-item input[type="text"] {
+            width: 60px;
+            padding: 4px 6px;
+            font-size: 11px;
+        }
+
+        .material-item input[type="color"] {
+            width: 40px;
+            height: 24px;
+            padding: 0;
+            border: 1px solid rgba(100, 100, 150, 0.5);
+            border-radius: 4px;
+            cursor: pointer;
+            background: rgba(20, 20, 40, 0.8);
+        }
+
+        .material-item .delete-btn {
+            width: 20px;
+            height: 20px;
+            padding: 0;
+            font-size: 10px;
+        }
     </style>
 </head>
 <body>
@@ -491,6 +530,21 @@
                         <input type="number" id="maxHousesToDestroy" value="1" min="0" max="10">
                     </label>
                 </div>
+
+                <div class="section-title">🏔️ Rango de Altitud</div>
+                <div class="param-grid">
+                    <label class="tooltip"
+                        data-tooltip="Altitud mínima para que una celda sea pasable por carretera (0-1)">
+                        Altitud mínima:
+                        <input type="number" id="roadMinAltitude" value="0.2" min="0" max="1" step="0.05">
+                    </label>
+                    <label class="tooltip"
+                        data-tooltip="Altitud máxima para que una celda sea pasable por carretera (0-1)">
+                        Altitud máxima:
+                        <input type="number" id="roadMaxAltitude" value="0.7" min="0" max="1" step="0.05">
+                    </label>
+                </div>
+
                 <div class="info-text">
                     Activa el modo y haz clic en 2 puntos. Destruye árboles/piedras. Puede destruir casas según config.
                 </div>
@@ -632,34 +686,6 @@
                 <div id="treesList" class="entity-list scrollable-list" style="margin-top: 10px;"></div>
             </div>
 
-            <!-- Acciones Globales -->
-            <div class="panel">
-                <h3>🔧 Acciones</h3>
-                <div class="controls">
-                    <button class="secondary small" onclick="toggleAllRoads(true)">👁️ Carreteras</button>
-                    <button class="secondary small" onclick="toggleAllRoads(false)">🙈 Carreteras</button>
-                    <button class="secondary small" onclick="toggleAllHouses(true)">👁️ Casas</button>
-                    <button class="secondary small" onclick="toggleAllHouses(false)">🙈 Casas</button>
-                </div>
-                <div class="controls" style="margin-top: 8px;">
-                    <button class="secondary small" onclick="toggleAllRocks(true)">👁️ Piedras</button>
-                    <button class="secondary small" onclick="toggleAllRocks(false)">🙈 Piedras</button>
-                    <button class="secondary small" onclick="toggleAllTrees(true)">👁️ Árboles</button>
-                    <button class="secondary small" onclick="toggleAllTrees(false)">🙈 Árboles</button>
-                </div>
-                <div class="controls" style="margin-top: 8px;">
-                    <button class="danger" onclick="clearAll()">⚠️ Limpiar Todo</button>
-                </div>
-            </div>
-
-            <!-- Exportar -->
-            <div class="panel">
-                <h3>💾 Exportar</h3>
-                <div class="info-text" style="margin-bottom: 10px;">
-                    Exporta el mapa completo con grilla, entidades y parámetros de generación.
-                </div>
-                <button style="width: 100%;" onclick="exportMapData()">📥 Exportar JSON</button>
-            </div>
         </div>
 
         <!-- Panel derecho: Canvas y leyenda -->
@@ -688,44 +714,73 @@
 
             <div class="panel">
                 <h3>📊 Leyenda</h3>
-                <div class="legend">
-                    <div class="legend-item">
-                        <div class="color-box" style="background: #0a1f2e;"></div>
-                        <span>Agua profunda</span>
+                <div class="legend" id="legendContainer">
+                    <!-- Las leyendas se generarán dinámicamente -->
+                </div>
+            </div>
+
+            <!-- Acciones Globales -->
+            <div class="panel">
+                <h3>🔧 Acciones</h3>
+                <div class="controls">
+                    <button class="secondary small" onclick="toggleAllRoads(true)">👁️ Carreteras</button>
+                    <button class="secondary small" onclick="toggleAllRoads(false)">🙈 Carreteras</button>
+                    <button class="secondary small" onclick="toggleAllHouses(true)">👁️ Casas</button>
+                    <button class="secondary small" onclick="toggleAllHouses(false)">🙈 Casas</button>
+                </div>
+                <div class="controls" style="margin-top: 8px;">
+                    <button class="secondary small" onclick="toggleAllRocks(true)">👁️ Piedras</button>
+                    <button class="secondary small" onclick="toggleAllRocks(false)">🙈 Piedras</button>
+                    <button class="secondary small" onclick="toggleAllTrees(true)">👁️ Árboles</button>
+                    <button class="secondary small" onclick="toggleAllTrees(false)">🙈 Árboles</button>
+                </div>
+                <div class="controls" style="margin-top: 8px;">
+                    <button class="danger" onclick="clearAll()">⚠️ Limpiar Todo</button>
+                </div>
+            </div>
+
+            <!-- Exportar -->
+            <div class="panel">
+                <h3>💾 Exportar</h3>
+
+                <div class="section-divider">
+                    <div class="section-title">🎨 Definición de Materiales</div>
+                    <div class="info-text" style="margin-bottom: 8px; font-size: 11px;">
+                        Define rangos de altitud, número y color de material. Los colores se aplican al mapa.
                     </div>
-                    <div class="legend-item">
-                        <div class="color-box" style="background: #1a4d2e;"></div>
-                        <span>Agua</span>
+                    <div id="materialsList"
+                        style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px;">
+                        <!-- Material definitions will be inserted here -->
                     </div>
-                    <div class="legend-item">
-                        <div class="color-box" style="background: #8B4513;"></div>
-                        <span>Tierra</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="color-box" style="background: #90EE90;"></div>
-                        <span>Montaña</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="color-box" style="background: #4a4a4a;"></div>
-                        <span>Montaña alta</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="color-box" style="background: #FFD700;"></div>
-                        <span>Carretera</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="color-box" style="background: #e74c3c;"></div>
-                        <span>Casa</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="color-box" style="background: #6b6b6b; border-radius: 50%;"></div>
-                        <span>Piedra</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="color-box" style="background: #228B22; border-radius: 50%;"></div>
-                        <span>Árbol</span>
+                    <button class="secondary small" style="width: 100%;" onclick="addMaterialDefinition()">➕ Agregar
+                        Material</button>
+
+                    <div style="margin-top: 10px; padding: 8px; background: rgba(0, 0, 0, 0.2); border-radius: 6px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="roadsAsMaterial" onchange="toggleRoadMaterial()">
+                            <span style="flex: 1;">Carreteras como material</span>
+                        </label>
+                        <div id="roadMaterialInput" style="display: none; margin-top: 8px;">
+                            <label style="font-size: 11px;">
+                                Número de material:
+                                <input type="number" id="roadMaterialNumber" value="99" min="0" max="255"
+                                    style="width: 60px;">
+                            </label>
+                        </div>
                     </div>
                 </div>
+
+                <div style="margin-top: 15px;">
+                    <label style="font-size: 12px; color: #b0b0b0; margin-bottom: 6px; display: block;">
+                        Tipo de exportación:
+                    </label>
+                    <select id="exportType" style="width: 100%; margin-bottom: 10px;">
+                        <option value="complete">Exportación Completa (Grid + Entidades + Materiales)</option>
+                        <option value="materials">Solo Materiales (Array 2D de números)</option>
+                    </select>
+                </div>
+
+                <button style="width: 100%;" onclick="exportMapData()">📥 Exportar JSON</button>
             </div>
         </div>
     </div>
@@ -801,6 +856,10 @@
         let trees = [];
         let rockGroupIdCounter = 1;
         let treeGroupIdCounter = 1;
+
+        // Material definitions
+        let materialDefinitions = [];
+        let materialIdCounter = 1;
 
         let cellSize = 12;
         const MIN_PASSABLE = 0.25;
@@ -887,6 +946,13 @@
 
         // ============== COLORES ==============
         function getTerrainColor(value) {
+            // Use material definitions for colors
+            for (const mat of materialDefinitions) {
+                if (value >= mat.minAltitude && value < mat.maxAltitude) {
+                    return mat.color;
+                }
+            }
+            // Fallback to default colors if no material matches
             if (value < MIN_PASSABLE) return '#0a1f2e';
             if (value > MAX_PASSABLE) return '#4a4a4a';
             if (value < 0.3) return '#1a4d2e';
@@ -1231,7 +1297,9 @@
                 container.classList.add('road-mode');
                 modeStatus.textContent = 'ON';
                 btn.classList.add('active');
-                showInfo('Modo carretera activado. Haz clic en 2 celdas pasables (sin casas) para crear una carretera.');
+                const minAlt = parseFloat(document.getElementById('roadMinAltitude').value) || 0;
+                const maxAlt = parseFloat(document.getElementById('roadMaxAltitude').value) || 1;
+                showInfo(`Modo carretera activado. Haz clic en 2 celdas con altitud entre ${minAlt}-${maxAlt} para crear una carretera.`);
             } else {
                 canvas.classList.remove('road-mode');
                 container.classList.remove('road-mode');
@@ -1249,11 +1317,19 @@
         }
 
         // Verifica si una celda puede ser parte de una carretera
-        // Considera el máximo de casas destruibles configurado
+        // Considera el máximo de casas destruibles configurado y el rango de altitud
         function canBeRoad(x, y, maxHousesToDestroy = null) {
             if (!grid || !grid[y] || !grid[y][x]) return false;
             const cell = grid[y][x];
             if (!cell.isPassable) return false;
+
+            // Verificar rango de altitud
+            const minAltitude = parseFloat(document.getElementById('roadMinAltitude').value) || 0;
+            const maxAltitude = parseFloat(document.getElementById('roadMaxAltitude').value) || 1;
+
+            if (cell.noise < minAltitude || cell.noise > maxAltitude) {
+                return false; // Fuera del rango de altitud permitido
+            }
 
             // Si no se especifica, obtener del input
             if (maxHousesToDestroy === null) {
@@ -1298,8 +1374,14 @@
 
             if (y >= 0 && y < grid.length && x >= 0 && x < grid[0].length) {
                 if (!canBeRoad(x, y)) {
+                    const cell = grid[y][x];
+                    const minAltitude = parseFloat(document.getElementById('roadMinAltitude').value) || 0;
+                    const maxAltitude = parseFloat(document.getElementById('roadMaxAltitude').value) || 1;
+
                     if (!isPassable(x, y)) {
                         showInfo(`Celda (${x}, ${y}) es impasable.`);
+                    } else if (cell.noise < minAltitude || cell.noise > maxAltitude) {
+                        showInfo(`Celda (${x}, ${y}) altitud ${cell.noise.toFixed(2)} fuera del rango permitido (${minAltitude}-${maxAltitude}).`);
                     } else {
                         showInfo(`Celda (${x}, ${y}) tiene casas. No puede ser inicio/fin de carretera.`);
                     }
@@ -1335,7 +1417,9 @@
             const path = aStar(start, end);
 
             if (path.length === 0) {
-                showInfo('No se pudo encontrar un camino (puede estar bloqueado por casas o zonas impasables).');
+                const minAlt = parseFloat(document.getElementById('roadMinAltitude').value) || 0;
+                const maxAlt = parseFloat(document.getElementById('roadMaxAltitude').value) || 1;
+                showInfo(`No se pudo encontrar un camino (puede estar bloqueado por casas, zonas impasables o celdas fuera del rango de altitud ${minAlt}-${maxAlt}).`);
                 selectedCells = [];
                 drawGrid();
                 return;
@@ -2243,12 +2327,206 @@
             showInfo('Todos los árboles han sido eliminados.');
         }
 
+        // ============== DEFINICIÓN DE MATERIALES ==============
+        function addMaterialDefinition(minAlt = 0, maxAlt = 0.1, materialNum = 1, name = '', color = '#ffffff') {
+            const id = materialIdCounter++;
+            materialDefinitions.push({
+                id: id,
+                minAltitude: minAlt,
+                maxAltitude: maxAlt,
+                materialNumber: materialNum,
+                name: name || `Material ${materialNum}`,
+                color: color
+            });
+            updateMaterialsList();
+            updateLegend();
+        }
+
+        function deleteMaterialDefinition(id) {
+            materialDefinitions = materialDefinitions.filter(m => m.id !== id);
+            updateMaterialsList();
+            drawGrid(); // Redibujar el mapa
+        }
+
+        function updateMaterialsList() {
+            const container = document.getElementById('materialsList');
+            if (materialDefinitions.length === 0) {
+                container.innerHTML = '<div style="color: #666; font-size: 11px; text-align: center; padding: 8px;">No hay materiales definidos</div>';
+                return;
+            }
+
+            // Sort by minAltitude for display
+            const sortedMaterials = [...materialDefinitions].sort((a, b) => a.minAltitude - b.minAltitude);
+
+            container.innerHTML = sortedMaterials.map(mat => `
+                <div class="material-item">
+                    <input type="color" value="${mat.color}" 
+                           onchange="updateMaterialColor(${mat.id}, this.value)" 
+                           title="Color del material">
+                    <input type="text" value="${mat.name}" 
+                           onchange="updateMaterialName(${mat.id}, this.value)" 
+                           placeholder="Nombre"
+                           title="Nombre del material">
+                    <input type="number" value="${mat.minAltitude}" 
+                           onchange="updateMaterialMin(${mat.id}, this.value)" 
+                           min="0" max="1" step="0.01"
+                           title="Altitud mínima">
+                    <span style="color: #666;">-</span>
+                    <input type="number" value="${mat.maxAltitude}" 
+                           onchange="updateMaterialMax(${mat.id}, this.value)" 
+                           min="0" max="1" step="0.01"
+                           title="Altitud máxima">
+                    <span style="color: #666;">=</span>
+                    <input type="number" value="${mat.materialNumber}" 
+                           onchange="updateMaterialNumber(${mat.id}, this.value)" 
+                           min="0" max="255"
+                           title="Número de material">
+                    <button class="delete-btn small danger" onclick="deleteMaterialDefinition(${mat.id})" title="Eliminar">🗑️</button>
+                </div>
+            `).join('');
+
+            updateLegend();
+        }
+
+        function updateLegend() {
+            const container = document.getElementById('legendContainer');
+
+            // Sort materials by minAltitude
+            const sortedMaterials = [...materialDefinitions].sort((a, b) => a.minAltitude - b.minAltitude);
+
+            // Generate material legend items
+            const materialItems = sortedMaterials.map(mat => `
+                <div class="legend-item">
+                    <div class="color-box" style="background: ${mat.color};"></div>
+                    <span>${mat.name}</span>
+                </div>
+            `).join('');
+
+            // Add entity items (houses, rocks, trees)
+            const entityItems = `
+                <div class="legend-item">
+                    <div class="color-box" style="background: #FFD700;"></div>
+                    <span>Carretera</span>
+                </div>
+                <div class="legend-item">
+                    <div class="color-box" style="background: #e74c3c;"></div>
+                    <span>Casa</span>
+                </div>
+                <div class="legend-item">
+                    <div class="color-box" style="background: #6b6b6b; border-radius: 50%;"></div>
+                    <span>Piedra</span>
+                </div>
+                <div class="legend-item">
+                    <div class="color-box" style="background: #228B22; border-radius: 50%;"></div>
+                    <span>Árbol</span>
+                </div>
+            `;
+
+            container.innerHTML = materialItems + entityItems;
+        }
+
+        function updateMaterialName(id, value) {
+            const mat = materialDefinitions.find(m => m.id === id);
+            if (mat) {
+                mat.name = value;
+                updateLegend();
+            }
+        }
+
+        function updateMaterialMin(id, value) {
+            const mat = materialDefinitions.find(m => m.id === id);
+            if (mat) {
+                mat.minAltitude = parseFloat(value);
+                drawGrid(); // Redibujar el mapa con los nuevos rangos
+            }
+        }
+
+        function updateMaterialMax(id, value) {
+            const mat = materialDefinitions.find(m => m.id === id);
+            if (mat) {
+                mat.maxAltitude = parseFloat(value);
+                drawGrid(); // Redibujar el mapa con los nuevos rangos
+            }
+        }
+
+        function updateMaterialNumber(id, value) {
+            const mat = materialDefinitions.find(m => m.id === id);
+            if (mat) mat.materialNumber = parseInt(value);
+        }
+
+        function updateMaterialColor(id, value) {
+            const mat = materialDefinitions.find(m => m.id === id);
+            if (mat) {
+                mat.color = value;
+                updateLegend(); // Actualizar leyenda con el nuevo color
+                drawGrid(); // Redibujar el mapa con el nuevo color
+            }
+        }
+
+        function toggleRoadMaterial() {
+            const checkbox = document.getElementById('roadsAsMaterial');
+            const input = document.getElementById('roadMaterialInput');
+            input.style.display = checkbox.checked ? 'block' : 'none';
+        }
+
+        function initializeDefaultMaterials() {
+            // Default material definitions based on current terrain colors
+            // These match the getTerrainColor function's original logic
+            materialDefinitions = [];
+            materialIdCounter = 1;
+            addMaterialDefinition(0, 0.25, 1, 'Agua Profunda', '#0a1f2e');
+            addMaterialDefinition(0.25, 0.3, 2, 'Agua', '#1a4d2e');
+            addMaterialDefinition(0.3, 0.6, 3, 'Tierra', '#8B4513');
+            addMaterialDefinition(0.6, 0.75, 4, 'Montaña', '#90EE90');
+            addMaterialDefinition(0.75, 1.0, 5, 'Montaña Alta', '#4a4a4a');
+        }
+
+        // Generate materials array based on definitions
+        function generateMaterialsArray() {
+            if (!grid || grid.length === 0) return [];
+
+            const roadsAsMaterial = document.getElementById('roadsAsMaterial').checked;
+            const roadMaterialNum = parseInt(document.getElementById('roadMaterialNumber').value) || 99;
+
+            const materialsArray = [];
+
+            for (let y = 0; y < grid.length; y++) {
+                const row = [];
+                for (let x = 0; x < grid[y].length; x++) {
+                    const cell = grid[y][x];
+
+                    // Check if cell has road and roads should override material
+                    if (roadsAsMaterial && cell.roadIds.length > 0) {
+                        row.push(roadMaterialNum);
+                    } else {
+                        // Find matching material based on altitude
+                        const altitude = cell.noise;
+                        let materialNum = 0; // Default material if no match
+
+                        for (const mat of materialDefinitions) {
+                            if (altitude >= mat.minAltitude && altitude < mat.maxAltitude) {
+                                materialNum = mat.materialNumber;
+                                break;
+                            }
+                        }
+
+                        row.push(materialNum);
+                    }
+                }
+                materialsArray.push(row);
+            }
+
+            return materialsArray;
+        }
+
         // ============== EXPORTAR DATOS ==============
         function exportMapData() {
             if (!grid || grid.length === 0) {
                 showInfo('No hay mapa para exportar. Genera un terreno primero.');
                 return;
             }
+
+            const exportType = document.getElementById('exportType').value;
 
             // 1. Parámetros de generación
             const parameters = {
@@ -2371,26 +2649,70 @@
                 }))
             }));
 
-            // Construir objeto final
-            const mapData = {
-                parameters: parameters,
-                grid: gridData,
-                entities: {
-                    houses: housesData,
-                    trees: treesData,
-                    rocks: rocksData,
-                    roads: roadsData
-                },
-                metadata: {
-                    exportDate: new Date().toISOString(),
-                    gridWidth: grid[0].length,
-                    gridHeight: grid.length,
-                    totalHouses: housesData.length,
-                    totalTrees: treesData.length,
-                    totalRocks: rocksData.length,
-                    totalRoads: roadsData.length
-                }
-            };
+            // Generate materials array
+            const materialsArray = generateMaterialsArray();
+
+            // Construir objeto final según el tipo de exportación
+            let mapData;
+            let filename;
+
+            if (exportType === 'materials') {
+                // Solo exportar array de materiales
+                mapData = {
+                    materials: materialsArray,
+                    materialDefinitions: materialDefinitions.map(mat => ({
+                        name: mat.name,
+                        minAltitude: mat.minAltitude,
+                        maxAltitude: mat.maxAltitude,
+                        materialNumber: mat.materialNumber,
+                        color: mat.color
+                    })),
+                    materialsConfig: {
+                        roadsAsMaterial: document.getElementById('roadsAsMaterial').checked,
+                        roadMaterialNumber: parseInt(document.getElementById('roadMaterialNumber').value) || 99
+                    },
+                    metadata: {
+                        exportDate: new Date().toISOString(),
+                        gridWidth: grid[0].length,
+                        gridHeight: grid.length
+                    }
+                };
+                filename = `materials_${parameters.width}x${parameters.height}_${Date.now()}.json`;
+            } else {
+                // Exportación completa
+                mapData = {
+                    parameters: parameters,
+                    grid: gridData,
+                    materials: materialsArray,
+                    materialDefinitions: materialDefinitions.map(mat => ({
+                        name: mat.name,
+                        minAltitude: mat.minAltitude,
+                        maxAltitude: mat.maxAltitude,
+                        materialNumber: mat.materialNumber,
+                        color: mat.color
+                    })),
+                    materialsConfig: {
+                        roadsAsMaterial: document.getElementById('roadsAsMaterial').checked,
+                        roadMaterialNumber: parseInt(document.getElementById('roadMaterialNumber').value) || 99
+                    },
+                    entities: {
+                        houses: housesData,
+                        trees: treesData,
+                        rocks: rocksData,
+                        roads: roadsData
+                    },
+                    metadata: {
+                        exportDate: new Date().toISOString(),
+                        gridWidth: grid[0].length,
+                        gridHeight: grid.length,
+                        totalHouses: housesData.length,
+                        totalTrees: treesData.length,
+                        totalRocks: rocksData.length,
+                        totalRoads: roadsData.length
+                    }
+                };
+                filename = `map_${parameters.width}x${parameters.height}_${Date.now()}.json`;
+            }
 
             // Descargar como JSON
             const jsonString = JSON.stringify(mapData, null, 2);
@@ -2399,13 +2721,17 @@
 
             const a = document.createElement('a');
             a.href = url;
-            a.download = `map_${parameters.width}x${parameters.height}_${Date.now()}.json`;
+            a.download = filename;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
 
-            showInfo(`Mapa exportado: ${housesData.length} casas, ${treesData.length} árboles, ${rocksData.length} piedras, ${roadsData.length} carreteras.`);
+            if (exportType === 'materials') {
+                showInfo(`Materiales exportados: ${grid[0].length}x${grid.length} array.`);
+            } else {
+                showInfo(`Mapa exportado: ${housesData.length} casas, ${treesData.length} árboles, ${rocksData.length} piedras, ${roadsData.length} carreteras. Materiales: ${grid[0].length}x${grid.length} array.`);
+            }
         }
 
         // ============== A* PATHFINDING ==============
@@ -2598,6 +2924,10 @@
 
         // ============== INICIALIZACIÓN ==============
         window.addEventListener('load', function () {
+            // Initialize default materials
+            initializeDefaultMaterials();
+            updateLegend();
+
             generateGrid();
 
             const canvas = document.getElementById('gridCanvas');
