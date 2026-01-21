@@ -525,6 +525,11 @@
                 </div>
                 <div class="param-grid" style="margin-bottom: 10px;">
                     <label class="tooltip"
+                        data-tooltip="Ancho de la carretera en celdas. 1 = una celda, 2+ = se expande a los lados.">
+                        Ancho carretera:
+                        <input type="number" id="roadWidth" value="1" min="1" max="10">
+                    </label>
+                    <label class="tooltip"
                         data-tooltip="Máximo de casas que una carretera puede destruir por celda. 0 = evitar casas completamente.">
                         Max casas destruibles:
                         <input type="number" id="maxHousesToDestroy" value="1" min="0" max="10">
@@ -546,7 +551,8 @@
                 </div>
 
                 <div class="info-text">
-                    Activa el modo y haz clic en 2 puntos. Destruye árboles/piedras. Puede destruir casas según config.
+                    Activa el modo y haz clic en 2 puntos. El ancho expande la carretera a los lados. Destruye
+                    árboles/piedras. Puede destruir casas según config.
                 </div>
                 <div id="roadsList" class="entity-list scrollable-list">
                 </div>
@@ -1413,10 +1419,12 @@
 
             const start = selectedCells[0];
             const end = selectedCells[1];
+            const roadWidth = parseInt(document.getElementById('roadWidth').value) || 1;
+            const maxHousesToDestroy = parseInt(document.getElementById('maxHousesToDestroy').value) || 0;
 
-            const path = aStar(start, end);
+            const basePath = aStar(start, end);
 
-            if (path.length === 0) {
+            if (basePath.length === 0) {
                 const minAlt = parseFloat(document.getElementById('roadMinAltitude').value) || 0;
                 const maxAlt = parseFloat(document.getElementById('roadMaxAltitude').value) || 1;
                 showInfo(`No se pudo encontrar un camino (puede estar bloqueado por casas, zonas impasables o celdas fuera del rango de altitud ${minAlt}-${maxAlt}).`);
@@ -1425,6 +1433,9 @@
                 return;
             }
 
+            // Expand the path based on road width
+            const path = expandRoadPath(basePath, roadWidth, maxHousesToDestroy);
+
             const roadEntity = {
                 id: roadIdCounter++,
                 name: `Carretera ${roadIdCounter - 1}`,
@@ -1432,7 +1443,8 @@
                 visible: true,
                 color: roadColors[(roadIdCounter - 2) % roadColors.length],
                 start: { x: start.x, y: start.y },
-                end: { x: end.x, y: end.y }
+                end: { x: end.x, y: end.y },
+                width: roadWidth
             };
 
             roads.push(roadEntity);
@@ -1498,7 +1510,7 @@
             drawGrid();
 
             // Mensaje informativo
-            let msg = `Carretera creada: ${path.length} celdas desde (${start.x},${start.y}) hasta (${end.x},${end.y})`;
+            let msg = `Carretera creada (ancho ${roadWidth}): ${path.length} celdas desde (${start.x},${start.y}) hasta (${end.x},${end.y})`;
             const destroyed = [];
             if (destroyedHouses > 0) destroyed.push(`${destroyedHouses} casas`);
             if (destroyedRocks > 0) destroyed.push(`${destroyedRocks} piedras`);
@@ -2819,6 +2831,62 @@
             return path;
         }
 
+        // Expands a road path to make it wider
+        // Width 1 = original path, Width 2+ = adds layers of adjacent passable cells
+        function expandRoadPath(path, width, maxHousesToDestroy) {
+            if (width <= 1 || path.length === 0) return path;
+
+            const key = (p) => `${p.x},${p.y}`;
+            const expandedSet = new Set();
+            const expandedPath = [];
+
+            // Add original path cells
+            path.forEach(cell => {
+                expandedSet.add(key(cell));
+                expandedPath.push({ x: cell.x, y: cell.y });
+            });
+
+            // Expand in layers
+            let currentLayer = [...path];
+            const layersToAdd = width - 1;
+
+            for (let layer = 0; layer < layersToAdd; layer++) {
+                const nextLayer = [];
+
+                for (const cell of currentLayer) {
+                    // Check 4 neighbors (up, down, left, right)
+                    const neighbors = [
+                        // { x: cell.x, y: cell.y - 1 },
+                        { x: cell.x, y: cell.y + 1 },
+                        // { x: cell.x - 1, y: cell.y },
+                        { x: cell.x + 1, y: cell.y }
+                    ];
+
+                    for (const neighbor of neighbors) {
+                        const nKey = key(neighbor);
+
+                        // Skip if already in expanded path
+                        if (expandedSet.has(nKey)) continue;
+
+                        // Check bounds
+                        if (neighbor.y < 0 || neighbor.y >= grid.length) continue;
+                        if (neighbor.x < 0 || neighbor.x >= grid[0].length) continue;
+
+                        // Check if cell can be part of road (passable and respects house destruction limit)
+                        if (canBeRoad(neighbor.x, neighbor.y, maxHousesToDestroy)) {
+                            expandedSet.add(nKey);
+                            expandedPath.push({ x: neighbor.x, y: neighbor.y });
+                            nextLayer.push(neighbor);
+                        }
+                    }
+                }
+
+                currentLayer = nextLayer;
+            }
+
+            return expandedPath;
+        }
+
         // ============== UI ==============
         function updateUI() {
             updateRoadsList();
@@ -2838,7 +2906,7 @@
             container.innerHTML = roads.map(road => `
                 <div class="entity-item">
                     <div class="entity-color" style="background: ${road.color};"></div>
-                    <span class="name" title="${road.name}: ${road.cells.length} celdas">${road.name} (${road.cells.length})</span>
+                    <span class="name" title="${road.name}: ${road.cells.length} celdas, ancho ${road.width || 1}">${road.name} (${road.cells.length}) w${road.width || 1}</span>
                     <button class="visibility-btn small ${road.visible ? '' : 'secondary'}" onclick="toggleRoadVisibility(${road.id})">
                         ${road.visible ? '👁️' : '🙈'}
                     </button>
