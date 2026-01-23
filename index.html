@@ -783,6 +783,7 @@
                     <select id="exportType" style="width: 100%; margin-bottom: 10px;">
                         <option value="complete">Exportación Completa (Grid + Entidades + Materiales)</option>
                         <option value="materials">Solo Materiales (Array 2D de números)</option>
+                        <option value="objects">Solo Objetos (Formato Simplificado)</option>
                     </select>
                 </div>
 
@@ -2570,7 +2571,7 @@
                 gridData.push(row);
             }
 
-            // 3. Entidades
+            // 3. Entidades (formato simplificado: x, y en pixels, dimensiones en pixels)
             // Casas
             const housesData = [];
             for (let y = 0; y < grid.length; y++) {
@@ -2578,86 +2579,60 @@
                     grid[y][x].houses.forEach(house => {
                         const worldX = (x + house.offsetX) * cellSize;
                         const worldY = (y + house.offsetY) * cellSize;
+                        const widthPx = (house.width || HOUSE_WIDTH) * cellSize;
+                        const heightPx = (house.height || HOUSE_HEIGHT) * cellSize;
                         housesData.push({
-                            cellX: x,
-                            cellY: y,
-                            offsetX: parseFloat(house.offsetX.toFixed(4)),
-                            offsetY: parseFloat(house.offsetY.toFixed(4)),
-                            width: parseFloat((house.width || HOUSE_WIDTH).toFixed(4)),
-                            height: parseFloat((house.height || HOUSE_HEIGHT).toFixed(4)),
-                            worldX: parseFloat(worldX.toFixed(2)),
-                            worldY: parseFloat(worldY.toFixed(2))
+                            x: parseFloat(worldX.toFixed(2)),
+                            y: parseFloat(worldY.toFixed(2)),
+                            width: parseFloat(widthPx.toFixed(2)),
+                            height: parseFloat(heightPx.toFixed(2))
                         });
                     });
                 }
             }
 
-            // Árboles (con radius y height derivada)
+            // Árboles (con radius en pixels)
             const treesData = [];
             for (let y = 0; y < grid.length; y++) {
                 for (let x = 0; x < grid[y].length; x++) {
                     grid[y][x].trees.forEach(tree => {
                         const crownRadius = tree.radius * 2.5;
-                        // Altura del árbol: proporcional al radio (aproximadamente 4x el radio de copa)
-                        const treeHeight = crownRadius * 4;
                         const worldX = (x + tree.offsetX) * cellSize;
                         const worldY = (y + tree.offsetY) * cellSize;
+                        const radiusPx = crownRadius * cellSize;
                         treesData.push({
-                            cellX: x,
-                            cellY: y,
-                            offsetX: parseFloat(tree.offsetX.toFixed(4)),
-                            offsetY: parseFloat(tree.offsetY.toFixed(4)),
-                            radius: parseFloat(tree.radius.toFixed(4)),
-                            crownRadius: parseFloat(crownRadius.toFixed(4)),
-                            height: parseFloat(treeHeight.toFixed(4)),
-                            worldX: parseFloat(worldX.toFixed(2)),
-                            worldY: parseFloat(worldY.toFixed(2))
+                            x: parseFloat(worldX.toFixed(2)),
+                            y: parseFloat(worldY.toFixed(2)),
+                            radius: parseFloat(radiusPx.toFixed(2))
                         });
                     });
                 }
             }
 
-            // Piedras
+            // Piedras (con radius en pixels)
             const rocksData = [];
             for (let y = 0; y < grid.length; y++) {
                 for (let x = 0; x < grid[y].length; x++) {
                     grid[y][x].rocks.forEach(rock => {
                         const worldX = (x + rock.offsetX) * cellSize;
                         const worldY = (y + rock.offsetY) * cellSize;
+                        const radiusPx = rock.radius * cellSize;
                         rocksData.push({
-                            cellX: x,
-                            cellY: y,
-                            offsetX: parseFloat(rock.offsetX.toFixed(4)),
-                            offsetY: parseFloat(rock.offsetY.toFixed(4)),
-                            radius: parseFloat(rock.radius.toFixed(4)),
-                            worldX: parseFloat(worldX.toFixed(2)),
-                            worldY: parseFloat(worldY.toFixed(2))
+                            x: parseFloat(worldX.toFixed(2)),
+                            y: parseFloat(worldY.toFixed(2)),
+                            radius: parseFloat(radiusPx.toFixed(2))
                         });
                     });
                 }
             }
 
-            // Carreteras
+            // Carreteras (formato simplificado: lista de celdas con posición en pixels)
             const roadsData = roads.map(road => ({
                 id: road.id,
-                name: road.name,
-                start: {
-                    x: road.start.x,
-                    y: road.start.y,
-                    worldX: road.start.x * cellSize,
-                    worldY: road.start.y * cellSize
-                },
-                end: {
-                    x: road.end.x,
-                    y: road.end.y,
-                    worldX: road.end.x * cellSize,
-                    worldY: road.end.y * cellSize
-                },
+                width: road.width || 1,
                 cells: road.cells.map(c => ({
-                    x: c.x,
-                    y: c.y,
-                    worldX: c.x * cellSize,
-                    worldY: c.y * cellSize
+                    x: parseFloat((c.x * cellSize).toFixed(2)),
+                    y: parseFloat((c.y * cellSize).toFixed(2))
                 }))
             }));
 
@@ -2690,6 +2665,27 @@
                     }
                 };
                 filename = `materials_${parameters.width}x${parameters.height}_${Date.now()}.json`;
+            } else if (exportType === 'objects') {
+                // Solo exportar objetos en formato simplificado
+                mapData = {
+                    houses: housesData,
+                    trees: treesData,
+                    rocks: rocksData,
+                    roads: roadsData,
+                    metadata: {
+                        exportDate: new Date().toISOString(),
+                        cellSize: cellSize,
+                        gridWidth: grid[0].length,
+                        gridHeight: grid.length,
+                        worldWidth: grid[0].length * cellSize,
+                        worldHeight: grid.length * cellSize,
+                        totalHouses: housesData.length,
+                        totalTrees: treesData.length,
+                        totalRocks: rocksData.length,
+                        totalRoads: roadsData.length
+                    }
+                };
+                filename = `objects_${parameters.width}x${parameters.height}_${Date.now()}.json`;
             } else {
                 // Exportación completa
                 mapData = {
@@ -2741,6 +2737,8 @@
 
             if (exportType === 'materials') {
                 showInfo(`Materiales exportados: ${grid[0].length}x${grid.length} array.`);
+            } else if (exportType === 'objects') {
+                showInfo(`Objetos exportados: ${housesData.length} casas, ${treesData.length} árboles, ${rocksData.length} piedras, ${roadsData.length} carreteras.`);
             } else {
                 showInfo(`Mapa exportado: ${housesData.length} casas, ${treesData.length} árboles, ${rocksData.length} piedras, ${roadsData.length} carreteras. Materiales: ${grid[0].length}x${grid.length} array.`);
             }
