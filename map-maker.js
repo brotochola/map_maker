@@ -1711,7 +1711,7 @@ function addMaterialDefinition(minAlt = 0, maxAlt = 0.1, materialNum = 1, name =
         color: color
     });
     updateMaterialsList();
-    updateLegend();
+    
 }
 
 function deleteMaterialDefinition(id) {
@@ -1756,48 +1756,16 @@ function updateMaterialsList() {
         </div>
     `).join('');
 
-    updateLegend();
+    
 }
 
-function updateLegend() {
-    const container = document.getElementById('legendContainer');
 
-    const sortedMaterials = [...materialDefinitions].sort((a, b) => a.minAltitude - b.minAltitude);
-
-    const materialItems = sortedMaterials.map(mat => `
-        <div class="legend-item">
-            <div class="color-box" style="background: ${mat.color};"></div>
-            <span>${mat.name}</span>
-        </div>
-    `).join('');
-
-    const entityItems = `
-        <div class="legend-item">
-            <div class="color-box" style="background: #FFD700;"></div>
-            <span>Road</span>
-        </div>
-        <div class="legend-item">
-            <div class="color-box" style="background: #e74c3c;"></div>
-            <span>House</span>
-        </div>
-        <div class="legend-item">
-            <div class="color-box" style="background: #6b6b6b; border-radius: 50%;"></div>
-            <span>Rock</span>
-        </div>
-        <div class="legend-item">
-            <div class="color-box" style="background: #228B22; border-radius: 50%;"></div>
-            <span>Tree</span>
-        </div>
-    `;
-
-    container.innerHTML = materialItems + entityItems;
-}
 
 function updateMaterialName(id, value) {
     const mat = materialDefinitions.find(m => m.id === id);
     if (mat) {
         mat.name = value;
-        updateLegend();
+        
     }
 }
 
@@ -1826,7 +1794,7 @@ function updateMaterialColor(id, value) {
     const mat = materialDefinitions.find(m => m.id === id);
     if (mat) {
         mat.color = value;
-        updateLegend();
+        
         drawGrid();
     }
 }
@@ -2316,7 +2284,7 @@ function showInfo(message) {
 // ============== INITIALIZATION ==============
 window.addEventListener('load', function () {
     initializeDefaultMaterials();
-    updateLegend();
+    
     updateTileCountLabels();
 
     generateGrid();

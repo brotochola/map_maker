@@ -25,25 +25,28 @@
 
         .main-container {
             display: flex;
+            flex-direction: column;
             gap: 20px;
-            max-width: 1600px;
+            max-width: 1800px;
             margin: 0 auto;
         }
 
-        .left-panel {
-            width: 340px;
+        .canvas-section {
             display: flex;
-            flex-direction: column;
             gap: 15px;
+            align-items: flex-start;
         }
 
-        .right-panel {
+        .canvas-area {
             flex: 1;
             min-width: 0;
-            max-width: calc(100vw - 400px);
+        }
+
+        .panels-container {
             display: flex;
-            flex-direction: column;
-            gap: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: flex-start;
         }
 
         h1 {
@@ -54,16 +57,92 @@
         }
 
         .panel {
-            background: rgba(30, 30, 50, 0.9);
+            width: min-content;
+            min-width: 240px;
             border-radius: 12px;
             padding: 15px;
             border: 1px solid rgba(100, 100, 150, 0.3);
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
         }
 
+        /* Panel color themes */
+        .panel-terrain {
+            background: rgba(45, 35, 55, 0.95);
+            border-color: rgba(138, 100, 180, 0.4);
+            width: 280px;
+            flex-shrink: 0;
+        }
+
+        .panel-terrain h3 {
+            color: #b794f6;
+            border-bottom-color: rgba(138, 100, 180, 0.4);
+        }
+
+        .panel-roads {
+            background: rgba(55, 45, 35, 0.95);
+            border-color: rgba(255, 183, 77, 0.4);
+        }
+
+        .panel-roads h3 {
+            color: #ffb74d;
+            border-bottom-color: rgba(255, 183, 77, 0.4);
+        }
+
+        .panel-houses {
+            background: rgba(55, 35, 35, 0.95);
+            border-color: rgba(239, 83, 80, 0.4);
+        }
+
+        .panel-houses h3 {
+            color: #ef5350;
+            border-bottom-color: rgba(239, 83, 80, 0.4);
+        }
+
+        .panel-rocks {
+            background: rgba(45, 45, 50, 0.95);
+            border-color: rgba(158, 158, 158, 0.4);
+        }
+
+        .panel-rocks h3 {
+            color: #9e9e9e;
+            border-bottom-color: rgba(158, 158, 158, 0.4);
+        }
+
+        .panel-trees {
+            background: rgba(35, 50, 40, 0.95);
+            border-color: rgba(129, 199, 132, 0.4);
+        }
+
+        .panel-trees h3 {
+            color: #81c784;
+            border-bottom-color: rgba(129, 199, 132, 0.4);
+        }
+
+        .panel-export {
+            background: rgba(35, 45, 55, 0.95);
+            border-color: rgba(100, 181, 246, 0.4);
+        }
+
+        .panel-export h3 {
+            color: #64b5f6;
+            border-bottom-color: rgba(100, 181, 246, 0.4);
+        }
+
+        .panel-canvas {
+            background: rgba(30, 30, 50, 0.9);
+            width: 100%;
+            min-width: unset;
+        }
+
+        .panel-legend {
+            background: rgba(40, 40, 55, 0.9);
+            width: 100%;
+            min-width: unset;
+            margin-top: 15px;
+        }
+
         .panel h3 {
             margin: 0 0 12px 0;
-            color: #00d4ff;
             font-size: 14px;
             text-transform: uppercase;
             letter-spacing: 1px;
@@ -229,7 +308,7 @@
         }
 
         .entity-list {
-            max-height: 200px;
+            max-height: 150px;
             overflow-y: auto;
             margin-top: 10px;
         }
@@ -352,6 +431,7 @@
             gap: 15px;
             font-size: 12px;
             color: #888;
+            flex-wrap: wrap;
         }
 
         .stats span {
@@ -478,106 +558,147 @@
     <h1>🗺️ Map Maker - Procedural Terrain Generator</h1>
 
     <div class="main-container">
-        <!-- Left Panel: Controls -->
-        <div class="left-panel">
-            <!-- Terrain Parameters -->
-            <div class="panel">
-                <h3>⚙️ Terrain Parameters</h3>
-                <div class="terrain-params">
-                    <label class="tooltip" data-tooltip="Map width in pixels. Tiles = pixels / cell size.">
-                        Width (px):
-                        <div class="input-with-label">
-                            <input type="number" id="widthPx" value="12800" min="128" max="51200">
-                            <span id="tilesXLabel" class="tile-label">= 100 tiles</span>
-                        </div>
-                    </label>
-                    <label class="tooltip" data-tooltip="Map height in pixels. Tiles = pixels / cell size.">
-                        Height (px):
-                        <div class="input-with-label">
-                            <input type="number" id="heightPx" value="6400" min="128" max="51200">
-                            <span id="tilesYLabel" class="tile-label">= 50 tiles</span>
-                        </div>
-                    </label>
-                    <label class="tooltip"
-                        data-tooltip="Size of each cell in pixels. Affects the visual size of the map.">
-                        Cell size (px):
-                        <input type="number" id="cellSizeInput" value="128" min="4" max="256">
-                    </label>
-                    <label>
-                        Scale:
-                        <input type="number" id="scale" value="0.1" min="0.001" max="1" step="0.001">
-                    </label>
-                    <label>
-                        Octaves:
-                        <input type="number" id="octaves" value="4" min="1" max="8">
-                    </label>
-                    <label class="tooltip"
-                        data-tooltip="How much each additional octave influences. With 0, only the first octave counts and terrain is smoother.">
-                        Persistence:
-                        <input type="number" id="persistence" value="0" min="0" max="1" step="0.1">
-                    </label>
-                    <label class="tooltip"
-                        data-tooltip="How much detail increases in each octave. With 0, no extra detail and terrain is more uniform.">
-                        Lacunarity:
-                        <input type="number" id="lacunarity" value="0" min="0" max="4" step="0.1">
-                    </label>
-                    <label class="tooltip"
-                        data-tooltip="Canvas resolution. Lower = better performance. E.g., with 128px cell and 100 cells, 10% = 1280px canvas instead of 12800px">
-                        Canvas resolution:
-                        <select id="renderScaleSelect" onchange="setRenderScale(this.value)">
-                            <option value="1">100% (Full)</option>
-                            <option value="0.5">50%</option>
-                            <option value="0.25">25%</option>
-                            <option value="0.1" selected>10% (Default)</option>
-                            <option value="0.05">5% (Fastest)</option>
-                        </select>
-                    </label>
+        <!-- Canvas Section with Terrain on left -->
+        <div class="canvas-section">
+            <!-- Terrain Parameters - Left side -->
+            <span>
+                <div class="panel panel-terrain">
+                    <h3>⚙️ Terrain Parameters</h3>
+                    <div class="terrain-params">
+                        <label class="tooltip" data-tooltip="Map width in pixels. Tiles = pixels / cell size.">
+                            Width (px):
+                            <div class="input-with-label">
+                                <input type="number" id="widthPx" value="12800" min="128" max="51200">
+                                <span id="tilesXLabel" class="tile-label">= 100 tiles</span>
+                            </div>
+                        </label>
+                        <label class="tooltip" data-tooltip="Map height in pixels. Tiles = pixels / cell size.">
+                            Height (px):
+                            <div class="input-with-label">
+                                <input type="number" id="heightPx" value="6400" min="128" max="51200">
+                                <span id="tilesYLabel" class="tile-label">= 50 tiles</span>
+                            </div>
+                        </label>
+                        <label class="tooltip"
+                            data-tooltip="Size of each cell in pixels. Affects the visual size of the map.">
+                            Cell size (px):
+                            <input type="number" id="cellSizeInput" value="128" min="4" max="256">
+                        </label>
+                        <label>
+                            Scale:
+                            <input type="number" id="scale" value="0.1" min="0.001" max="1" step="0.001">
+                        </label>
+                        <label>
+                            Octaves:
+                            <input type="number" id="octaves" value="4" min="1" max="8">
+                        </label>
+                        <label class="tooltip"
+                            data-tooltip="How much each additional octave influences. With 0, only the first octave counts and terrain is smoother.">
+                            Persistence:
+                            <input type="number" id="persistence" value="0" min="0" max="1" step="0.1">
+                        </label>
+                        <label class="tooltip"
+                            data-tooltip="How much detail increases in each octave. With 0, no extra detail and terrain is more uniform.">
+                            Lacunarity:
+                            <input type="number" id="lacunarity" value="0" min="0" max="4" step="0.1">
+                        </label>
+                        <label class="tooltip"
+                            data-tooltip="Canvas resolution. Lower = better performance. E.g., with 128px cell and 100 cells, 10% = 1280px canvas instead of 12800px">
+                            Canvas resolution:
+                            <select id="renderScaleSelect" onchange="setRenderScale(this.value)">
+                                <option value="1">100% (Full)</option>
+                                <option value="0.5">50%</option>
+                                <option value="0.25">25%</option>
+                                <option value="0.1" selected>10% (Default)</option>
+                                <option value="0.05">5% (Fastest)</option>
+                            </select>
+                        </label>
+                    </div>
+                    <button style="margin-top: 10px; width: 100%;" onclick="generateGrid()">🔄 Generate Terrain</button>
                 </div>
-                <button style="margin-top: 10px; width: 100%;" onclick="generateGrid()">🔄 Generate Terrain</button>
+                <br>
+                <!-- Roads Panel -->
+                <div class="panel panel-roads">
+                    <h3>🛣️ Roads</h3>
+                    <div class="controls" style="margin-bottom: 10px;">
+                        <button id="roadModeBtn" onclick="toggleRoadMode()">
+                            Road Mode: <span id="modeStatus">OFF</span>
+                        </button>
+                    </div>
+                    <div class="param-grid" style="margin-bottom: 10px;">
+                        <label class="tooltip"
+                            data-tooltip="Road width in cells. 1 = one cell, 2+ = expands to the sides.">
+                            Road width:
+                            <input type="number" id="roadWidth" value="1" min="1" max="10">
+                        </label>
+                        <label class="tooltip"
+                            data-tooltip="Max houses a road can destroy per cell. 0 = avoid houses completely.">
+                            Max destroyable houses:
+                            <input type="number" id="maxHousesToDestroy" value="1" min="0" max="10">
+                        </label>
+                    </div>
+
+                    <div class="section-title">🏔️ Altitude Range</div>
+                    <div class="param-grid">
+                        <label class="tooltip" data-tooltip="Minimum altitude for a cell to be passable by road (0-1)">
+                            Min altitude:
+                            <input type="number" id="roadMinAltitude" value="0.2" min="0" max="1" step="0.05">
+                        </label>
+                        <label class="tooltip" data-tooltip="Maximum altitude for a cell to be passable by road (0-1)">
+                            Max altitude:
+                            <input type="number" id="roadMaxAltitude" value="0.7" min="0" max="1" step="0.05">
+                        </label>
+                    </div>
+
+                    <div class="info-text">
+                        Enable mode and click on 2 points. Width expands the road to the sides. Destroys trees/rocks.
+                        Can
+                        destroy houses based on config.
+                    </div>
+                    <div id="roadsList" class="entity-list scrollable-list">
+                    </div>
+                </div>
+            </span>
+
+            <!-- Canvas Area - Right side -->
+            <div class="canvas-area">
+                <div class="panel panel-canvas">
+                    <div class="canvas-container" id="canvasContainer">
+                        <canvas id="gridCanvas"></canvas>
+                    </div>
+                    <div class="zoom-controls">
+                        <button onclick="zoomOut()" title="Zoom Out">➖</button>
+                        <input type="range" class="zoom-slider" id="zoomSlider" min="1" max="300" value="100"
+                            onchange="setZoom(this.value)">
+                        <button onclick="zoomIn()" title="Zoom In">➕</button>
+                        <span id="zoomLevel">100%</span>
+                        <button class="secondary" onclick="fitToView()" title="Fit to View">🔄</button>
+                        <button class="danger" onclick="clearAll()" style="margin-left: auto;">⚠️ Clear All</button>
+                    </div>
+                    <div id="roadInfo" style="margin-top: 10px;">Generate terrain to begin.</div>
+                    <div class="stats" style="margin-top: 10px;">
+                        <span id="statsRoads">Roads: 0</span>
+                        <span id="statsHouses">Houses: 0</span>
+                        <span id="statsRocks">Rocks: 0</span>
+                        <span id="statsTrees">Trees: 0</span>
+                        <span id="statsCells">Cells: 0</span>
+                    </div>
+                </div>
+
+                <!-- <div class="panel panel-legend">
+                    <h3>📊 Legend</h3>
+                    <div class="legend" id="legendContainer">
+                    </div>
+                </div> -->
             </div>
+        </div>
 
-            <!-- Roads Panel -->
-            <div class="panel">
-                <h3>🛣️ Roads</h3>
-                <div class="controls" style="margin-bottom: 10px;">
-                    <button id="roadModeBtn" onclick="toggleRoadMode()">
-                        Road Mode: <span id="modeStatus">OFF</span>
-                    </button>
-                </div>
-                <div class="param-grid" style="margin-bottom: 10px;">
-                    <label class="tooltip" data-tooltip="Road width in cells. 1 = one cell, 2+ = expands to the sides.">
-                        Road width:
-                        <input type="number" id="roadWidth" value="1" min="1" max="10">
-                    </label>
-                    <label class="tooltip"
-                        data-tooltip="Max houses a road can destroy per cell. 0 = avoid houses completely.">
-                        Max destroyable houses:
-                        <input type="number" id="maxHousesToDestroy" value="1" min="0" max="10">
-                    </label>
-                </div>
+        <!-- Control Panels - Flex wrapped -->
+        <div class="panels-container">
 
-                <div class="section-title">🏔️ Altitude Range</div>
-                <div class="param-grid">
-                    <label class="tooltip" data-tooltip="Minimum altitude for a cell to be passable by road (0-1)">
-                        Min altitude:
-                        <input type="number" id="roadMinAltitude" value="0.2" min="0" max="1" step="0.05">
-                    </label>
-                    <label class="tooltip" data-tooltip="Maximum altitude for a cell to be passable by road (0-1)">
-                        Max altitude:
-                        <input type="number" id="roadMaxAltitude" value="0.7" min="0" max="1" step="0.05">
-                    </label>
-                </div>
-
-                <div class="info-text">
-                    Enable mode and click on 2 points. Width expands the road to the sides. Destroys trees/rocks. Can
-                    destroy houses based on config.
-                </div>
-                <div id="roadsList" class="entity-list scrollable-list">
-                </div>
-            </div>
 
             <!-- Houses Panel -->
-            <div class="panel">
+            <div class="panel panel-houses">
                 <h3>🏠 House Generator</h3>
 
                 <div class="section-title">📏 Size & Altitude Filters</div>
@@ -641,14 +762,14 @@
 
                 <div class="controls" style="margin-top: 10px;">
                     <button onclick="generateHouses()">🏗️ Generate Houses</button>
-                    <button class="danger" onclick="clearAllHouses()">🗑️ Clear Houses</button>
+                    <button class="danger" onclick="clearAllHouses()">🗑️ Clear</button>
                 </div>
                 <div id="housesList" class="entity-list scrollable-list" style="margin-top: 10px;">
                 </div>
             </div>
 
             <!-- Rocks Panel -->
-            <div class="panel">
+            <div class="panel panel-rocks">
                 <h3>🪨 Rock Generator</h3>
                 <div class="info-text" style="margin-bottom: 10px;">
                     Rocks spawn based on altitude range. Not on water, houses, roads, or high mountains.
@@ -681,13 +802,13 @@
                 </div>
                 <div class="controls" style="margin-top: 10px;">
                     <button onclick="generateRocks()">🪨 Generate Rocks</button>
-                    <button class="danger" onclick="clearAllRocks()">🗑️ Clear Rocks</button>
+                    <button class="danger" onclick="clearAllRocks()">🗑️ Clear</button>
                 </div>
                 <div id="rocksList" class="entity-list scrollable-list" style="margin-top: 10px;"></div>
             </div>
 
             <!-- Trees Panel -->
-            <div class="panel">
+            <div class="panel panel-trees">
                 <h3>🌲 Tree Generator</h3>
                 <div class="info-text" style="margin-bottom: 10px;">
                     Trees spawn based on altitude range. Attracted to water and other trees. Avoid houses.
@@ -746,92 +867,36 @@
 
                 <div class="controls" style="margin-top: 10px;">
                     <button onclick="generateTrees()">🌲 Generate Trees</button>
-                    <button class="danger" onclick="clearAllTrees()">🗑️ Clear Trees</button>
+                    <button class="danger" onclick="clearAllTrees()">🗑️ Clear</button>
                 </div>
                 <div id="treesList" class="entity-list scrollable-list" style="margin-top: 10px;"></div>
             </div>
 
-        </div>
-
-        <!-- Right Panel: Canvas and Legend -->
-        <div class="right-panel">
-            <div class="panel">
-                <div class="canvas-container" id="canvasContainer">
-                    <canvas id="gridCanvas"></canvas>
-                </div>
-                <div class="zoom-controls">
-                    <button onclick="zoomOut()" title="Zoom Out">➖</button>
-                    <input type="range" class="zoom-slider" id="zoomSlider" min="1" max="300" value="100"
-                        onchange="setZoom(this.value)">
-                    <button onclick="zoomIn()" title="Zoom In">➕</button>
-                    <span id="zoomLevel">100%</span>
-                    <button class="secondary" onclick="fitToView()" title="Fit to View">🔄</button>
-                </div>
-                <div id="roadInfo" style="margin-top: 10px;">Generate terrain to begin.</div>
-                <div class="stats" style="margin-top: 10px;">
-                    <span id="statsRoads">Roads: 0</span>
-                    <span id="statsHouses">Houses: 0</span>
-                    <span id="statsRocks">Rocks: 0</span>
-                    <span id="statsTrees">Trees: 0</span>
-                    <span id="statsCells">Cells: 0</span>
-                </div>
-            </div>
-
-            <div class="panel">
-                <h3>📊 Legend</h3>
-                <div class="legend" id="legendContainer">
-                    <!-- Legends will be generated dynamically -->
-                </div>
-            </div>
-
-            <!-- Global Actions -->
-            <div class="panel">
-                <h3>🔧 Actions</h3>
-                <div class="controls">
-                    <button class="secondary small" onclick="toggleAllRoads(true)">👁️ Roads</button>
-                    <button class="secondary small" onclick="toggleAllRoads(false)">🙈 Roads</button>
-                    <button class="secondary small" onclick="toggleAllHouses(true)">👁️ Houses</button>
-                    <button class="secondary small" onclick="toggleAllHouses(false)">🙈 Houses</button>
-                </div>
-                <div class="controls" style="margin-top: 8px;">
-                    <button class="secondary small" onclick="toggleAllRocks(true)">👁️ Rocks</button>
-                    <button class="secondary small" onclick="toggleAllRocks(false)">🙈 Rocks</button>
-                    <button class="secondary small" onclick="toggleAllTrees(true)">👁️ Trees</button>
-                    <button class="secondary small" onclick="toggleAllTrees(false)">🙈 Trees</button>
-                </div>
-                <div class="controls" style="margin-top: 8px;">
-                    <button class="danger" onclick="clearAll()">⚠️ Clear All</button>
-                </div>
-            </div>
-
             <!-- Export -->
-            <div class="panel">
+            <div class="panel panel-export">
                 <h3>💾 Export</h3>
 
-                <div class="section-divider">
-                    <div class="section-title">🎨 Material Definitions</div>
-                    <div class="info-text" style="margin-bottom: 8px; font-size: 11px;">
-                        Define altitude ranges, material number and color. Colors are applied to the map.
-                    </div>
-                    <div id="materialsList"
-                        style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px;">
-                        <!-- Material definitions will be inserted here -->
-                    </div>
-                    <button class="secondary small" style="width: 100%;" onclick="addMaterialDefinition()">➕ Add
-                        Material</button>
+                <div class="section-title">🎨 Material Definitions</div>
+                <div class="info-text" style="margin-bottom: 8px; font-size: 11px;">
+                    Define altitude ranges, material number and color. Colors are applied to the map.
+                </div>
+                <div id="materialsList" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px;">
+                    <!-- Material definitions will be inserted here -->
+                </div>
+                <button class="secondary small" style="width: 100%;" onclick="addMaterialDefinition()">➕ Add
+                    Material</button>
 
-                    <div style="margin-top: 10px; padding: 8px; background: rgba(0, 0, 0, 0.2); border-radius: 6px;">
-                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                            <input type="checkbox" id="roadsAsMaterial" onchange="toggleRoadMaterial()">
-                            <span style="flex: 1;">Roads as material</span>
+                <div style="margin-top: 10px; padding: 8px; background: rgba(0, 0, 0, 0.2); border-radius: 6px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="roadsAsMaterial" onchange="toggleRoadMaterial()">
+                        <span style="flex: 1;">Roads as material</span>
+                    </label>
+                    <div id="roadMaterialInput" style="display: none; margin-top: 8px;">
+                        <label style="font-size: 11px;">
+                            Material number:
+                            <input type="number" id="roadMaterialNumber" value="99" min="0" max="255"
+                                style="width: 60px;">
                         </label>
-                        <div id="roadMaterialInput" style="display: none; margin-top: 8px;">
-                            <label style="font-size: 11px;">
-                                Material number:
-                                <input type="number" id="roadMaterialNumber" value="99" min="0" max="255"
-                                    style="width: 60px;">
-                            </label>
-                        </div>
                     </div>
                 </div>
 
