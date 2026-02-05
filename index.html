@@ -636,6 +636,11 @@
                             Max destroyable houses:
                             <input type="number" id="maxHousesToDestroy" value="1" min="0" max="10">
                         </label>
+                        <label class="tooltip" data-tooltip="Color for all roads. Changes affect existing roads too.">
+                            Road color:
+                            <input type="color" id="roadColor" value="#FFD700"
+                                onchange="updateAllRoadColors(this.value)">
+                        </label>
                     </div>
 
                     <div class="section-title">🏔️ Altitude Range</div>

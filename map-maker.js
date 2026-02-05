@@ -89,10 +89,8 @@ let lastPanY = 0;
 // Render scale
 let renderScale = 0.1;
 
-const roadColors = [
-    '#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4',
-    '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE'
-];
+// Default road color (user can change via color picker)
+let roadColor = '#FFD700';
 
 // ============== TILE COUNT UPDATES ==============
 function updateTileCountLabels() {
@@ -895,7 +893,7 @@ function createRoad() {
         name: `Road ${roadIdCounter - 1}`,
         cells: path,
         visible: true,
-        color: roadColors[(roadIdCounter - 2) % roadColors.length],
+        color: roadColor,
         start: { x: start.x, y: start.y },
         end: { x: end.x, y: end.y },
         width: roadWidth
@@ -992,6 +990,13 @@ function toggleRoadVisibility(roadId) {
 
 function toggleAllRoads(visible) {
     roads.forEach(r => r.visible = visible);
+    updateUI();
+    drawGrid();
+}
+
+function updateAllRoadColors(newColor) {
+    roadColor = newColor;
+    roads.forEach(r => r.color = newColor);
     updateUI();
     drawGrid();
 }
@@ -2286,6 +2291,9 @@ window.addEventListener('load', function () {
     initializeDefaultMaterials();
     
     updateTileCountLabels();
+    
+    // Sync road color from color picker
+    roadColor = document.getElementById('roadColor').value;
 
     generateGrid();
 
