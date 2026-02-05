@@ -537,6 +537,51 @@
             font-size: 10px;
         }
 
+        /* Drag and drop styles for materials */
+        .material-item {
+            transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+        }
+
+        .material-item .drag-handle {
+            cursor: grab;
+            padding: 2px 4px;
+            color: #666;
+            font-size: 12px;
+            user-select: none;
+        }
+
+        .material-item .drag-handle:hover {
+            color: #00d4ff;
+        }
+
+        .material-item .drag-handle:active {
+            cursor: grabbing;
+        }
+
+        .material-item.dragging {
+            opacity: 0.8;
+            background: rgba(0, 212, 255, 0.2);
+            box-shadow: 0 4px 12px rgba(0, 212, 255, 0.3);
+            transform: scale(1.02);
+        }
+
+        .material-item.drag-over {
+            border-top: 2px solid #00d4ff;
+            margin-top: -2px;
+        }
+
+        .material-item .depth-input {
+            width: 40px;
+            padding: 4px 6px;
+            font-size: 11px;
+            text-align: center;
+        }
+
+        .material-item .depth-label {
+            font-size: 10px;
+            color: #888;
+        }
+
         .tile-label {
             font-size: 11px;
             color: #00d4ff;
@@ -568,25 +613,25 @@
                         <label class="tooltip" data-tooltip="Map width in pixels. Tiles = pixels / cell size.">
                             Width (px):
                             <div class="input-with-label">
-                                <input type="number" id="widthPx" value="12800" min="128" max="51200">
+                                <input type="number" id="widthPx" value="10000" min="128" max="51200">
                                 <span id="tilesXLabel" class="tile-label">= 100 tiles</span>
                             </div>
                         </label>
                         <label class="tooltip" data-tooltip="Map height in pixels. Tiles = pixels / cell size.">
                             Height (px):
                             <div class="input-with-label">
-                                <input type="number" id="heightPx" value="6400" min="128" max="51200">
+                                <input type="number" id="heightPx" value="5000" min="128" max="51200">
                                 <span id="tilesYLabel" class="tile-label">= 50 tiles</span>
                             </div>
                         </label>
                         <label class="tooltip"
                             data-tooltip="Size of each cell in pixels. Affects the visual size of the map.">
                             Cell size (px):
-                            <input type="number" id="cellSizeInput" value="128" min="4" max="256">
+                            <input type="number" id="cellSizeInput" value="48" min="4" max="256">
                         </label>
                         <label>
                             Scale:
-                            <input type="number" id="scale" value="0.1" min="0.001" max="1" step="0.001">
+                            <input type="number" id="scale" value="0.05" min="0.001" max="1" step="0.001">
                         </label>
                         <label>
                             Octaves:
@@ -652,6 +697,15 @@
                         <label class="tooltip" data-tooltip="Maximum altitude for a cell to be passable by road (0-1)">
                             Max altitude:
                             <input type="number" id="roadMaxAltitude" value="0.7" min="0" max="1" step="0.05">
+                        </label>
+                    </div>
+
+                    <div style="margin-top: 10px; padding: 8px; background: rgba(0, 0, 0, 0.2); border-radius: 6px;">
+                        <label class="tooltip"
+                            data-tooltip="If checked, road cells will clear material data in underlying layers. If unchecked, materials are preserved and road is only in its own layer."
+                            style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="roadDestroyMaterials" checked>
+                            <span style="flex: 1;">Destroy materials in layers</span>
                         </label>
                     </div>
 
@@ -738,11 +792,6 @@
                             data-tooltip="Attraction to other houses. Higher = more clustered houses. Formula: bonus = importance/d²">
                             Neighbor attraction:
                             <input type="number" id="neighborImportance" value="30" min="0" max="100">
-                        </label>
-                        <label class="tooltip"
-                            data-tooltip="Attraction to water. Higher = more houses near water. Formula: bonus = importance/d²">
-                            Water attraction:
-                            <input type="number" id="waterImportance" value="20" min="0" max="100">
                         </label>
                         <label>
                             Search radius:
@@ -849,11 +898,6 @@
                     <div class="section-title">🎯 Attraction & Penalty</div>
                     <div class="param-grid">
                         <label class="tooltip"
-                            data-tooltip="Attraction to water (0-100). Higher = more trees near water.">
-                            Water attraction:
-                            <input type="number" id="treeWaterAttraction" value="30" min="0" max="100">
-                        </label>
-                        <label class="tooltip"
                             data-tooltip="Attraction to other trees (0-100). Higher = more clustered trees.">
                             Tree attraction:
                             <input type="number" id="treeTreeAttraction" value="40" min="0" max="100">
@@ -912,6 +956,7 @@
                     <select id="exportType" style="width: 100%; margin-bottom: 10px;">
                         <option value="complete">Complete Export (Grid + Entities + Materials)</option>
                         <option value="materials">Materials Only (2D Array of Numbers)</option>
+                        <option value="layers">Material Layers (Binary, One Layer Per Material)</option>
                         <option value="objects">Objects Only (Simplified Format)</option>
                     </select>
                 </div>

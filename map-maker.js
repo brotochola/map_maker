@@ -73,7 +73,7 @@ let treeGroupIdCounter = 1;
 let materialDefinitions = [];
 let materialIdCounter = 1;
 
-let cellSize = 128;
+let cellSize = 48;
 const MIN_PASSABLE = 0.25;
 const MAX_PASSABLE = 0.75;
 const WATER_THRESHOLD = 0.3;
@@ -409,7 +409,10 @@ function checkCircleCollision(worldX, worldY, radius, excludeNewEntities = []) {
 
 // ============== COLORS ==============
 function getTerrainColor(value) {
-    for (const mat of materialDefinitions) {
+    // Sort by depth descending - higher depth materials override lower ones
+    const sortedMaterials = [...materialDefinitions].sort((a, b) => b.depth - a.depth);
+    
+    for (const mat of sortedMaterials) {
         if (value >= mat.minAltitude && value < mat.maxAltitude) {
             return mat.color;
         }
@@ -785,16 +788,19 @@ function isPassable(x, y) {
     return grid[y][x].isPassable;
 }
 
-function canBeRoad(x, y, maxHousesToDestroy = null) {
+function canBeRoad(x, y, maxHousesToDestroy = null, checkAltitude = true) {
     if (!grid || !grid[y] || !grid[y][x]) return false;
     const cell = grid[y][x];
     if (!cell.isPassable) return false;
 
-    const minAltitude = parseFloat(document.getElementById('roadMinAltitude').value) || 0;
-    const maxAltitude = parseFloat(document.getElementById('roadMaxAltitude').value) || 1;
+    // Only check altitude if specified (for start/end point validation)
+    if (checkAltitude) {
+        const minAltitude = parseFloat(document.getElementById('roadMinAltitude').value) || 0;
+        const maxAltitude = parseFloat(document.getElementById('roadMaxAltitude').value) || 1;
 
-    if (cell.noise < minAltitude || cell.noise > maxAltitude) {
-        return false;
+        if (cell.noise < minAltitude || cell.noise > maxAltitude) {
+            return false;
+        }
     }
 
     if (maxHousesToDestroy === null) {
@@ -1120,7 +1126,6 @@ function generateHouses() {
     const maxHeight = parseFloat(document.getElementById('maxHeight').value);
     const roadImportance = parseInt(document.getElementById('roadImportance').value) / 100;
     const neighborImportance = parseInt(document.getElementById('neighborImportance').value) / 100;
-    const waterImportance = parseInt(document.getElementById('waterImportance').value) / 100;
     const searchRadius = parseInt(document.getElementById('searchRadius').value);
     const baseProbability = parseInt(document.getElementById('houseProbability').value) / 100;
     const maxHousesPerCell = parseInt(document.getElementById('maxHousesPerCell').value);
@@ -1150,7 +1155,7 @@ function generateHouses() {
 
             let probability = baseProbability;
 
-            const totalImportance = roadImportance + neighborImportance + waterImportance;
+            const totalImportance = roadImportance + neighborImportance;
 
             if (totalImportance > 0) {
                 if (hasRoads && roadImportance > 0) {
@@ -1158,13 +1163,6 @@ function generateHouses() {
                         return grid[ny][nx].roadIds.length > 0;
                     });
                     probability += roadBonus;
-                }
-
-                if (waterImportance > 0) {
-                    const waterBonus = calculateProximityBonus(x, y, searchRadius, waterImportance, (nx, ny) => {
-                        return grid[ny][nx].isWater;
-                    });
-                    probability += waterBonus;
                 }
 
                 if (neighborImportance > 0) {
@@ -1221,7 +1219,7 @@ function generateHouses() {
         name: `Group ${houseGroupIdCounter - 1}`,
         visible: true,
         count: totalHouses,
-        params: { minHeight, maxHeight, roadImportance, neighborImportance, waterImportance, searchRadius, baseProbability, maxHousesPerCell }
+        params: { minHeight, maxHeight, roadImportance, neighborImportance, searchRadius, baseProbability, maxHousesPerCell }
     };
 
     houses.push(houseGroup);
@@ -1549,7 +1547,6 @@ function generateTrees() {
     const maxAltitude = parseFloat(document.getElementById('treeMaxAltitude').value) || 1;
     const casePenalty = parseInt(document.getElementById('treeCasePenalty').value) / 100;
     const searchRadius = parseInt(document.getElementById('treeSearchRadius').value);
-    const waterAttraction = parseInt(document.getElementById('treeWaterAttraction').value) / 100;
     const treeAttraction = parseInt(document.getElementById('treeTreeAttraction').value) / 100;
 
     if (!grid || grid.length === 0) {
@@ -1575,14 +1572,6 @@ function generateTrees() {
 
             // Base probability
             let probability = baseProbability;
-
-            // Water attraction bonus
-            if (waterAttraction > 0) {
-                const waterBonus = calculateProximityBonus(x, y, searchRadius, waterAttraction, (nx, ny) => {
-                    return grid[ny][nx].isWater;
-                });
-                probability += waterBonus;
-            }
 
             // Tree attraction bonus (neighbor trees)
             if (treeAttraction > 0) {
@@ -1705,18 +1694,25 @@ function clearAllTrees() {
 }
 
 // ============== MATERIAL DEFINITIONS ==============
-function addMaterialDefinition(minAlt = 0, maxAlt = 0.1, materialNum = 1, name = '', color = '#ffffff') {
+function addMaterialDefinition(minAlt = 0, maxAlt = 0.1, materialNum = 1, name = '', color = '#ffffff', depth = null) {
     const id = materialIdCounter++;
+    // Auto-assign depth based on current max depth + 1 if not provided
+    if (depth === null) {
+        const maxDepth = materialDefinitions.length > 0 
+            ? Math.max(...materialDefinitions.map(m => m.depth || 0)) 
+            : -1;
+        depth = maxDepth + 1;
+    }
     materialDefinitions.push({
         id: id,
         minAltitude: minAlt,
         maxAltitude: maxAlt,
         materialNumber: materialNum,
         name: name || `Material ${materialNum}`,
-        color: color
+        color: color,
+        depth: depth
     });
     updateMaterialsList();
-    
 }
 
 function deleteMaterialDefinition(id) {
@@ -1732,10 +1728,12 @@ function updateMaterialsList() {
         return;
     }
 
-    const sortedMaterials = [...materialDefinitions].sort((a, b) => a.minAltitude - b.minAltitude);
+    // Sort by depth for rendering order (lower depth = rendered first = appears below)
+    const sortedMaterials = [...materialDefinitions].sort((a, b) => a.depth - b.depth);
 
     container.innerHTML = sortedMaterials.map(mat => `
-        <div class="material-item">
+        <div class="material-item" draggable="true" data-material-id="${mat.id}">
+            <span class="drag-handle" title="Drag to reorder">⋮⋮</span>
             <input type="color" value="${mat.color}" 
                    onchange="updateMaterialColor(${mat.id}, this.value)" 
                    title="Material color">
@@ -1757,11 +1755,18 @@ function updateMaterialsList() {
                    onchange="updateMaterialNumber(${mat.id}, this.value)" 
                    min="0" max="255"
                    title="Material number">
+            <span class="depth-label">D:</span>
+            <input type="number" value="${mat.depth}" 
+                   onchange="updateMaterialDepth(${mat.id}, this.value)" 
+                   min="0" max="99"
+                   class="depth-input"
+                   title="Depth (render order: lower = below)">
             <button class="delete-btn small danger" onclick="deleteMaterialDefinition(${mat.id})" title="Delete">🗑️</button>
         </div>
     `).join('');
 
-    
+    // Setup drag and drop handlers
+    setupMaterialDragAndDrop();
 }
 
 
@@ -1799,9 +1804,87 @@ function updateMaterialColor(id, value) {
     const mat = materialDefinitions.find(m => m.id === id);
     if (mat) {
         mat.color = value;
-        
         drawGrid();
     }
+}
+
+function updateMaterialDepth(id, value) {
+    const mat = materialDefinitions.find(m => m.id === id);
+    if (mat) {
+        mat.depth = parseInt(value) || 0;
+        updateMaterialsList();
+        drawGrid();
+    }
+}
+
+// Drag and drop functionality for materials
+let draggedMaterialId = null;
+
+function setupMaterialDragAndDrop() {
+    const container = document.getElementById('materialsList');
+    const items = container.querySelectorAll('.material-item');
+    
+    items.forEach(item => {
+        item.addEventListener('dragstart', handleMaterialDragStart);
+        item.addEventListener('dragend', handleMaterialDragEnd);
+        item.addEventListener('dragover', handleMaterialDragOver);
+        item.addEventListener('dragenter', handleMaterialDragEnter);
+        item.addEventListener('dragleave', handleMaterialDragLeave);
+        item.addEventListener('drop', handleMaterialDrop);
+    });
+}
+
+function handleMaterialDragStart(e) {
+    draggedMaterialId = parseInt(this.dataset.materialId);
+    this.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', draggedMaterialId);
+}
+
+function handleMaterialDragEnd(e) {
+    this.classList.remove('dragging');
+    document.querySelectorAll('.material-item').forEach(item => {
+        item.classList.remove('drag-over');
+    });
+    draggedMaterialId = null;
+}
+
+function handleMaterialDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+}
+
+function handleMaterialDragEnter(e) {
+    e.preventDefault();
+    const targetId = parseInt(this.dataset.materialId);
+    if (targetId !== draggedMaterialId) {
+        this.classList.add('drag-over');
+    }
+}
+
+function handleMaterialDragLeave(e) {
+    this.classList.remove('drag-over');
+}
+
+function handleMaterialDrop(e) {
+    e.preventDefault();
+    this.classList.remove('drag-over');
+    
+    const targetId = parseInt(this.dataset.materialId);
+    if (targetId === draggedMaterialId) return;
+    
+    const draggedMat = materialDefinitions.find(m => m.id === draggedMaterialId);
+    const targetMat = materialDefinitions.find(m => m.id === targetId);
+    
+    if (!draggedMat || !targetMat) return;
+    
+    // Swap depths
+    const tempDepth = draggedMat.depth;
+    draggedMat.depth = targetMat.depth;
+    targetMat.depth = tempDepth;
+    
+    updateMaterialsList();
+    drawGrid();
 }
 
 function toggleRoadMaterial() {
@@ -1813,11 +1896,13 @@ function toggleRoadMaterial() {
 function initializeDefaultMaterials() {
     materialDefinitions = [];
     materialIdCounter = 1;
-    addMaterialDefinition(0, 0.25, 1, 'Deep Water', '#0a1f2e');
-    addMaterialDefinition(0.25, 0.3, 2, 'Water', '#1a4d2e');
-    addMaterialDefinition(0.3, 0.6, 3, 'Land', '#8B4513');
-    addMaterialDefinition(0.6, 0.75, 4, 'Mountain', '#90EE90');
-    addMaterialDefinition(0.75, 1.0, 5, 'High Mountain', '#4a4a4a');
+    // depth parameter controls render order (lower = rendered first = appears below)
+    addMaterialDefinition(0, 1, 10, 'bg', '#ffffff', 0);
+    addMaterialDefinition(0.1, 0.3, 1, 'dry_grass', '#c4a44a', 1);
+    addMaterialDefinition(0.25, 0.5, 2, 'green_grass', '#4a8c4a', 2);
+    addMaterialDefinition(0.45, 0.6, 3, 'dark_grass', '#2d5c2d', 3);
+    addMaterialDefinition(0.7, 0.8, 4, 'sidewalk', '#8c8c8c', 4);
+    addMaterialDefinition(0.75, 1.0, 5, 'house_area', '#6b4423', 5);
 }
 
 function generateMaterialsArray() {
@@ -1853,6 +1938,79 @@ function generateMaterialsArray() {
     }
 
     return materialsArray;
+}
+
+function generateLayeredMaterialsArray() {
+    if (!grid || grid.length === 0) return [];
+
+    const roadsAsMaterial = document.getElementById('roadsAsMaterial').checked;
+    const roadMaterialNum = parseInt(document.getElementById('roadMaterialNumber').value) || 99;
+    const roadDestroyMaterials = document.getElementById('roadDestroyMaterials').checked;
+
+    const layers = [];
+
+    // Sort by depth for layer order (lower depth = first in array)
+    const sortedMaterials = [...materialDefinitions].sort((a, b) => a.depth - b.depth);
+
+    // Create a layer for each material definition
+    for (const mat of sortedMaterials) {
+        const layerData = [];
+
+        for (let y = 0; y < grid.length; y++) {
+            const row = [];
+            for (let x = 0; x < grid[y].length; x++) {
+                const cell = grid[y][x];
+                const altitude = cell.noise;
+
+                // Check if this cell belongs to this material
+                if (altitude >= mat.minAltitude && altitude < mat.maxAltitude) {
+                    // If roadDestroyMaterials is enabled and this cell has a road, clear the material
+                    if (roadDestroyMaterials && roadsAsMaterial && cell.roadIds.length > 0) {
+                        row.push(0); // Road destroys underlying material
+                    } else {
+                        row.push(1); // Binary: 1 means this material is present
+                    }
+                } else {
+                    row.push(0);
+                }
+            }
+            layerData.push(row);
+        }
+
+        layers.push({
+            name: mat.name,
+            materialNumber: mat.materialNumber,
+            depth: mat.depth,
+            data: layerData
+        });
+    }
+
+    // Add road layer if roads are treated as material
+    if (roadsAsMaterial) {
+        const roadLayerData = [];
+
+        for (let y = 0; y < grid.length; y++) {
+            const row = [];
+            for (let x = 0; x < grid[y].length; x++) {
+                const cell = grid[y][x];
+                row.push(cell.roadIds.length > 0 ? 1 : 0);
+            }
+            roadLayerData.push(row);
+        }
+
+        // Road layer gets highest depth (rendered on top)
+        const maxDepth = sortedMaterials.length > 0 
+            ? Math.max(...sortedMaterials.map(m => m.depth)) + 1 
+            : 0;
+        layers.push({
+            name: 'Road',
+            materialNumber: roadMaterialNum,
+            depth: maxDepth,
+            data: roadLayerData
+        });
+    }
+
+    return layers;
 }
 
 // ============== EXPORT DATA ==============
@@ -1966,8 +2124,9 @@ function exportMapData() {
                 minAltitude: mat.minAltitude,
                 maxAltitude: mat.maxAltitude,
                 materialNumber: mat.materialNumber,
-                color: mat.color
-            })),
+                color: mat.color,
+                depth: mat.depth
+            })).sort((a, b) => a.depth - b.depth),
             materialsConfig: {
                 roadsAsMaterial: document.getElementById('roadsAsMaterial').checked,
                 roadMaterialNumber: parseInt(document.getElementById('roadMaterialNumber').value) || 99
@@ -1979,6 +2138,12 @@ function exportMapData() {
             }
         };
         filename = `materials_${parameters.tilesX}x${parameters.tilesY}_${Date.now()}.json`;
+    } else if (exportType === 'layers') {
+        const layers = generateLayeredMaterialsArray();
+        mapData = {
+            layers: layers
+        };
+        filename = `layers_${parameters.tilesX}x${parameters.tilesY}_${Date.now()}.json`;
     } else if (exportType === 'objects') {
         mapData = {
             houses: housesData,
@@ -2009,8 +2174,9 @@ function exportMapData() {
                 minAltitude: mat.minAltitude,
                 maxAltitude: mat.maxAltitude,
                 materialNumber: mat.materialNumber,
-                color: mat.color
-            })),
+                color: mat.color,
+                depth: mat.depth
+            })).sort((a, b) => a.depth - b.depth),
             materialsConfig: {
                 roadsAsMaterial: document.getElementById('roadsAsMaterial').checked,
                 roadMaterialNumber: parseInt(document.getElementById('roadMaterialNumber').value) || 99
@@ -2048,6 +2214,8 @@ function exportMapData() {
 
     if (exportType === 'materials') {
         showInfo(`Materials exported: ${grid[0].length}x${grid.length} array.`);
+    } else if (exportType === 'layers') {
+        showInfo(`Layers exported: ${mapData.layers.length} layers (${grid[0].length}x${grid.length} each, binary format).`);
     } else if (exportType === 'objects') {
         showInfo(`Objects exported: ${housesData.length} houses, ${treesData.length} trees, ${rocksData.length} rocks, ${roadsData.length} roads.`);
     } else {
@@ -2118,7 +2286,8 @@ function getNeighbors(cell, maxHousesToDestroy) {
         const nx = cell.x + dir.x;
         const ny = cell.y + dir.y;
         if (ny >= 0 && ny < grid.length && nx >= 0 && nx < grid[0].length) {
-            if (canBeRoad(nx, ny, maxHousesToDestroy)) {
+            // Don't check altitude during pathfinding - draw complete roads
+            if (canBeRoad(nx, ny, maxHousesToDestroy, false)) {
                 neighbors.push({ x: nx, y: ny });
             }
         }
@@ -2169,7 +2338,8 @@ function expandRoadPath(path, width, maxHousesToDestroy) {
                 if (neighbor.y < 0 || neighbor.y >= grid.length) continue;
                 if (neighbor.x < 0 || neighbor.x >= grid[0].length) continue;
 
-                if (canBeRoad(neighbor.x, neighbor.y, maxHousesToDestroy)) {
+                // Don't check altitude when expanding road width
+                if (canBeRoad(neighbor.x, neighbor.y, maxHousesToDestroy, false)) {
                     expandedSet.add(nKey);
                     expandedPath.push({ x: neighbor.x, y: neighbor.y });
                     nextLayer.push(neighbor);
