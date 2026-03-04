@@ -307,6 +307,20 @@
             cursor: pointer;
         }
 
+        #flowfieldToggleBtn {
+            width: auto;
+            padding: 0 10px;
+            font-size: 11px;
+            white-space: nowrap;
+        }
+
+        #flowfieldToggleBtn.active {
+            background: rgba(0, 212, 255, 0.25);
+            border-color: #00d4ff;
+            color: #00d4ff;
+            box-shadow: 0 0 8px rgba(0, 212, 255, 0.3);
+        }
+
         .entity-list {
             max-height: 150px;
             overflow-y: auto;
@@ -716,6 +730,34 @@
                     </div>
                     <div id="roadsList" class="entity-list scrollable-list">
                     </div>
+
+                    <div class="section-divider">
+                        <div class="section-title">🚶 Sidewalks</div>
+                        <div class="param-grid" style="margin-bottom: 10px;">
+                            <label class="tooltip" data-tooltip="Default sidewalk width in tiles outward from road edge. Can be overridden per road.">
+                                Default width:
+                                <input type="number" id="defaultSidewalkWidth" value="2" min="0" max="10"
+                                    onchange="defaultSidewalkWidth = parseInt(this.value) || 0">
+                            </label>
+                            <label class="tooltip" data-tooltip="Color for sidewalk tiles on the map.">
+                                Color:
+                                <input type="color" id="sidewalkColor" value="#8c8c8c"
+                                    onchange="updateAllSidewalkColors(this.value)">
+                            </label>
+                        </div>
+                        <div style="margin-bottom: 10px; padding: 8px; background: rgba(0, 0, 0, 0.2); border-radius: 6px;">
+                            <label class="tooltip"
+                                data-tooltip="If checked, houses/trees/rocks on sidewalk cells will be destroyed when generating sidewalks."
+                                style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                <input type="checkbox" id="sidewalkDestroyEntities">
+                                <span style="flex: 1;">Destroy entities on sidewalks</span>
+                            </label>
+                        </div>
+                        <div class="controls">
+                            <button onclick="generateSidewalks()">🚶 Generate Sidewalks</button>
+                            <button class="danger" onclick="clearAllSidewalks()">🗑️ Clear</button>
+                        </div>
+                    </div>
                 </div>
             </span>
 
@@ -732,11 +774,13 @@
                         <button onclick="zoomIn()" title="Zoom In">➕</button>
                         <span id="zoomLevel">100%</span>
                         <button class="secondary" onclick="fitToView()" title="Fit to View">🔄</button>
+                        <button id="flowfieldToggleBtn" class="secondary" onclick="toggleFlowfieldOverlay()" title="Toggle flowfield overlay on canvas">🧭 Show Flowfield</button>
                         <button class="danger" onclick="clearAll()" style="margin-left: auto;">⚠️ Clear All</button>
                     </div>
                     <div id="roadInfo" style="margin-top: 10px;">Generate terrain to begin.</div>
                     <div class="stats" style="margin-top: 10px;">
                         <span id="statsRoads">Roads: 0</span>
+                        <span id="statsSidewalks">Sidewalks: 0 cells</span>
                         <span id="statsHouses">Houses: 0</span>
                         <span id="statsRocks">Rocks: 0</span>
                         <span id="statsTrees">Trees: 0</span>
@@ -949,6 +993,20 @@
                     </div>
                 </div>
 
+                <div style="margin-top: 6px; padding: 8px; background: rgba(0, 0, 0, 0.2); border-radius: 6px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="sidewalksAsMaterial" onchange="toggleSidewalkMaterial()">
+                        <span style="flex: 1;">Sidewalks as material</span>
+                    </label>
+                    <div id="sidewalkMaterialInput" style="display: none; margin-top: 8px;">
+                        <label style="font-size: 11px;">
+                            Material number:
+                            <input type="number" id="sidewalkMaterialNumber" value="98" min="0" max="255"
+                                style="width: 60px;">
+                        </label>
+                    </div>
+                </div>
+
                 <div style="margin-top: 15px;">
                     <label style="font-size: 12px; color: #b0b0b0; margin-bottom: 6px; display: block;">
                         Export type:
@@ -958,6 +1016,7 @@
                         <option value="materials">Materials Only (2D Array of Numbers)</option>
                         <option value="layers">Material Layers (Binary, One Layer Per Material)</option>
                         <option value="objects">Objects Only (Simplified Format)</option>
+                        <option value="flowfield_roads">Flowfield - Roads (Direction + Distance)</option>
                     </select>
                 </div>
 
@@ -966,6 +1025,22 @@
         </div>
     </div>
 
-    <script src="map-maker.js"></script>
+    <script src="js/simplex-noise.js"></script>
+    <script src="js/state.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/terrain.js"></script>
+    <script src="js/viewport.js"></script>
+    <script src="js/pathfinding.js"></script>
+    <script src="js/roads.js"></script>
+    <script src="js/sidewalks.js"></script>
+    <script src="js/houses.js"></script>
+    <script src="js/rocks.js"></script>
+    <script src="js/trees.js"></script>
+    <script src="js/materials.js"></script>
+    <script src="js/flowfield.js"></script>
+    <script src="js/export.js"></script>
+    <script src="js/renderer.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/init.js"></script>
 </body>
 </html>
