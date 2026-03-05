@@ -40,5 +40,42 @@ let sidewalkColor = '#8c8c8c';
 let defaultSidewalkWidth = 2;
 let sidewalkDestroyEntities = false;
 
+// Road and sidewalk material settings (depth for layer ordering)
+let roadMaterialDepth = 100;
+let sidewalkMaterialDepth = 99;
+let roadMaterialNumber = 99;
+let sidewalkMaterialNumber = 98;
+
 // Flowfield overlay
 let flowfieldOverlay = null;
+let sidewalkFlowfield = null;
+let roadAttractionWidth = 3;
+let showingFlowfieldType = 'none'; // 'none', 'roads', 'sidewalks'
+
+// Altitude overlay
+let showAltitudeOverlay = false;
+
+// Performance caching
+let terrainCacheDirty = true;
+let terrainImageBitmap = null;
+let sortedMaterialsCache = null;
+let sortedMaterialsCacheDirty = true;
+
+function invalidateTerrainCache() {
+    terrainCacheDirty = true;
+    terrainImageBitmap = null;
+}
+
+function invalidateMaterialsCache() {
+    sortedMaterialsCacheDirty = true;
+    sortedMaterialsCache = null;
+    invalidateTerrainCache();
+}
+
+function getSortedMaterials() {
+    if (sortedMaterialsCacheDirty || !sortedMaterialsCache) {
+        sortedMaterialsCache = [...materialDefinitions].sort((a, b) => b.depth - a.depth);
+        sortedMaterialsCacheDirty = false;
+    }
+    return sortedMaterialsCache;
+}

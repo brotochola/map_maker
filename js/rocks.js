@@ -55,7 +55,7 @@ function generateRocks() {
 
             // Check altitude range
             if (cell.noise < minAltitude || cell.noise > maxAltitude) continue;
-            if (cell.roadIds.length > 0) continue;
+            if (cell.roadIds.length > 0 || cell.sidewalkRoadIds.length > 0) continue;
 
             const currentRockCount = cell.rocks.length;
             if (currentRockCount >= maxRocksPerCell) continue;

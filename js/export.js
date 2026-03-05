@@ -179,16 +179,73 @@ function exportMapData() {
         ));
         mapData = {
             name: 'roads',
-            description: 'Each cell: [dx, dy] = normalized direction along road, or null if not a road cell.',
+            description: 'Each cell: [dx, dy] = normalized direction along road (+ attraction zone), or null if not covered.',
             gridWidth: grid[0].length,
             gridHeight: grid.length,
             cellSize: cellSize,
             worldWidth: grid[0].length * cellSize,
             worldHeight: grid.length * cellSize,
             totalRoads: roads.length,
+            attractionWidth: roadAttractionWidth,
             data: exportField
         };
         filename = `flowfield_roads_${parameters.tilesX}x${parameters.tilesY}_${Date.now()}.json`;
+    } else if (exportType === 'flowfield_sidewalks') {
+        const rawField = generateSidewalkFlowfield();
+        if (!rawField) {
+            showInfo('No sidewalks to generate flowfield from.');
+            return;
+        }
+        const exportField = rawField.map(row => row.map(c =>
+            c.dist < 0 ? null : {
+                dx: parseFloat(c.dx.toFixed(4)),
+                dy: parseFloat(c.dy.toFixed(4)),
+                side: c.side
+            }
+        ));
+        mapData = {
+            name: 'sidewalks',
+            description: 'Each cell: {dx, dy, side} where side is "right" (with traffic), "left" (against), or "mixed".',
+            gridWidth: grid[0].length,
+            gridHeight: grid.length,
+            cellSize: cellSize,
+            worldWidth: grid[0].length * cellSize,
+            worldHeight: grid.length * cellSize,
+            data: exportField
+        };
+        filename = `flowfield_sidewalks_${parameters.tilesX}x${parameters.tilesY}_${Date.now()}.json`;
+    } else if (exportType === 'flowfields_all') {
+        const roadsField = generateRoadFlowfield();
+        const sidewalksField = generateSidewalkFlowfield();
+
+        const roadsExport = roadsField ? roadsField.map(row => row.map(c =>
+            c.dist < 0 ? null : [parseFloat(c.dx.toFixed(4)), parseFloat(c.dy.toFixed(4))]
+        )) : null;
+
+        const sidewalksExport = sidewalksField ? sidewalksField.map(row => row.map(c =>
+            c.dist < 0 ? null : {
+                dx: parseFloat(c.dx.toFixed(4)),
+                dy: parseFloat(c.dy.toFixed(4)),
+                side: c.side
+            }
+        )) : null;
+
+        mapData = {
+            Flowfields: {
+                roads: roadsExport,
+                sidewalks: sidewalksExport
+            },
+            metadata: {
+                gridWidth: grid[0].length,
+                gridHeight: grid.length,
+                cellSize: cellSize,
+                worldWidth: grid[0].length * cellSize,
+                worldHeight: grid.length * cellSize,
+                totalRoads: roads.length,
+                roadAttractionWidth: roadAttractionWidth
+            }
+        };
+        filename = `flowfields_${parameters.tilesX}x${parameters.tilesY}_${Date.now()}.json`;
     } else {
         mapData = {
             parameters: parameters,
@@ -248,7 +305,11 @@ function exportMapData() {
     } else if (exportType === 'objects') {
         showInfo(`Objects exported: ${housesData.length} houses, ${treesData.length} trees, ${rocksData.length} rocks, ${roadsData.length} roads, ${sidewalksData.length} sidewalk cells.`);
     } else if (exportType === 'flowfield_roads') {
-        showInfo(`Road flowfield exported: ${grid[0].length}x${grid.length} grid. Road cells: [dx, dy]. Non-road cells: null.`);
+        showInfo(`Road flowfield exported: ${grid[0].length}x${grid.length} grid with ${roadAttractionWidth}-cell attraction zone.`);
+    } else if (exportType === 'flowfield_sidewalks') {
+        showInfo(`Sidewalk flowfield exported: ${grid[0].length}x${grid.length} grid. Right=with traffic, Left=against.`);
+    } else if (exportType === 'flowfields_all') {
+        showInfo(`All flowfields exported: Roads + Sidewalks in ${grid[0].length}x${grid.length} grid.`);
     } else {
         showInfo(`Map exported: ${housesData.length} houses, ${treesData.length} trees, ${rocksData.length} rocks, ${roadsData.length} roads, ${sidewalksData.length} sidewalk cells.`);
     }

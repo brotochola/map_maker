@@ -37,11 +37,15 @@ function generateGrid() {
     houses = [];
     rocks = [];
     flowfieldOverlay = null;
+    sidewalkFlowfield = null;
+    showingFlowfieldType = 'none';
+    if (typeof resetFlowfieldButtons === 'function') resetFlowfieldButtons();
     trees = [];
     roadIdCounter = 1;
     houseGroupIdCounter = 1;
     rockGroupIdCounter = 1;
     treeGroupIdCounter = 1;
+    invalidateTerrainCache();
 
     for (let y = 0; y < h; y++) {
         grid[y] = [];
@@ -84,8 +88,7 @@ function generateGrid() {
 
 // ============== COLORS ==============
 function getTerrainColor(value) {
-    // Sort by depth descending - higher depth materials override lower ones
-    const sortedMaterials = [...materialDefinitions].sort((a, b) => b.depth - a.depth);
+    const sortedMaterials = getSortedMaterials();
     
     for (const mat of sortedMaterials) {
         if (value >= mat.minAltitude && value < mat.maxAltitude) {
@@ -97,4 +100,16 @@ function getTerrainColor(value) {
     if (value < 0.3) return '#1a4d2e';
     if (value < 0.6) return '#8B4513';
     return '#90EE90';
+}
+
+function getTerrainColorRGB(value) {
+    const hex = getTerrainColor(value);
+    return hexToRGB(hex);
+}
+
+function hexToRGB(hex) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return { r, g, b };
 }

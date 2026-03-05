@@ -48,7 +48,7 @@ function tryPlaceHouse(cellX, cellY, newEntitiesBatch = [], maxAttempts = 30, mi
         let validPlacement = true;
         for (const cell of occupiedCells) {
             const cellData = grid[cell.y][cell.x];
-            if (!cellData.isPassable || cellData.roadIds.length > 0) {
+            if (!cellData.isPassable || cellData.roadIds.length > 0 || cellData.sidewalkRoadIds.length > 0) {
                 validPlacement = false;
                 break;
             }
@@ -97,7 +97,7 @@ function generateHouses() {
 
             if (!cell.isPassable) continue;
             if (cell.noise < minHeight || cell.noise > maxHeight) continue;
-            if (cell.roadIds.length > 0) continue;
+            if (cell.roadIds.length > 0 || cell.sidewalkRoadIds.length > 0) continue;
 
             const currentHouseCount = cell.houses.length;
             if (currentHouseCount >= maxHousesPerCell) continue;

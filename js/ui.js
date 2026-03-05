@@ -112,6 +112,9 @@ function clearAll() {
     rocks = [];
     trees = [];
     flowfieldOverlay = null;
+    sidewalkFlowfield = null;
+    showingFlowfieldType = 'none';
+    resetFlowfieldButtons();
     roadIdCounter = 1;
     houseGroupIdCounter = 1;
     rockGroupIdCounter = 1;

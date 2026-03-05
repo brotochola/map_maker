@@ -307,7 +307,8 @@
             cursor: pointer;
         }
 
-        #flowfieldToggleBtn {
+        #flowfieldToggleBtn,
+        #sidewalkFlowfieldBtn {
             width: auto;
             padding: 0 10px;
             font-size: 11px;
@@ -319,6 +320,13 @@
             border-color: #00d4ff;
             color: #00d4ff;
             box-shadow: 0 0 8px rgba(0, 212, 255, 0.3);
+        }
+
+        #sidewalkFlowfieldBtn.active {
+            background: rgba(180, 100, 255, 0.25);
+            border-color: #b464ff;
+            color: #b464ff;
+            box-shadow: 0 0 8px rgba(180, 100, 255, 0.3);
         }
 
         .entity-list {
@@ -596,6 +604,18 @@
             color: #888;
         }
 
+        .material-item.special-material {
+            background: rgba(60, 50, 40, 0.6);
+            border-left: 3px solid #FFD700;
+        }
+
+        .material-item.special-material .special-name {
+            font-weight: 600;
+            color: #FFD700;
+            flex: 1;
+            font-size: 11px;
+        }
+
         .tile-label {
             font-size: 11px;
             color: #00d4ff;
@@ -628,15 +648,15 @@
                             Width (px):
                             <div class="input-with-label">
                                 <input type="number" id="widthPx" value="10000" min="128" max="51200">
-                                <span id="tilesXLabel" class="tile-label">= 100 tiles</span>
-                            </div>
+                            </div> <span id="tilesXLabel" class="tile-label">= 100 tiles</span>
+
                         </label>
                         <label class="tooltip" data-tooltip="Map height in pixels. Tiles = pixels / cell size.">
                             Height (px):
                             <div class="input-with-label">
                                 <input type="number" id="heightPx" value="5000" min="128" max="51200">
-                                <span id="tilesYLabel" class="tile-label">= 50 tiles</span>
-                            </div>
+                            </div> <span id="tilesYLabel" class="tile-label">= 50 tiles</span>
+
                         </label>
                         <label class="tooltip"
                             data-tooltip="Size of each cell in pixels. Affects the visual size of the map.">
@@ -700,6 +720,12 @@
                             <input type="color" id="roadColor" value="#FFD700"
                                 onchange="updateAllRoadColors(this.value)">
                         </label>
+                        <label class="tooltip"
+                            data-tooltip="Cells around roads that pull entities back. 0 = no attraction zone.">
+                            Attraction zone:
+                            <input type="number" id="roadAttractionWidth" value="3" min="0" max="10"
+                                onchange="roadAttractionWidth = parseInt(this.value) || 0">
+                        </label>
                     </div>
 
                     <div class="section-title">🏔️ Altitude Range</div>
@@ -734,7 +760,8 @@
                     <div class="section-divider">
                         <div class="section-title">🚶 Sidewalks</div>
                         <div class="param-grid" style="margin-bottom: 10px;">
-                            <label class="tooltip" data-tooltip="Default sidewalk width in tiles outward from road edge. Can be overridden per road.">
+                            <label class="tooltip"
+                                data-tooltip="Default sidewalk width in tiles outward from road edge. Can be overridden per road.">
                                 Default width:
                                 <input type="number" id="defaultSidewalkWidth" value="2" min="0" max="10"
                                     onchange="defaultSidewalkWidth = parseInt(this.value) || 0">
@@ -745,7 +772,8 @@
                                     onchange="updateAllSidewalkColors(this.value)">
                             </label>
                         </div>
-                        <div style="margin-bottom: 10px; padding: 8px; background: rgba(0, 0, 0, 0.2); border-radius: 6px;">
+                        <div
+                            style="margin-bottom: 10px; padding: 8px; background: rgba(0, 0, 0, 0.2); border-radius: 6px;">
                             <label class="tooltip"
                                 data-tooltip="If checked, houses/trees/rocks on sidewalk cells will be destroyed when generating sidewalks."
                                 style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
@@ -774,7 +802,14 @@
                         <button onclick="zoomIn()" title="Zoom In">➕</button>
                         <span id="zoomLevel">100%</span>
                         <button class="secondary" onclick="fitToView()" title="Fit to View">🔄</button>
-                        <button id="flowfieldToggleBtn" class="secondary" onclick="toggleFlowfieldOverlay()" title="Toggle flowfield overlay on canvas">🧭 Show Flowfield</button>
+                        <button id="flowfieldToggleBtn" class="secondary" onclick="toggleFlowfieldOverlay('roads')"
+                            title="Toggle road flowfield overlay">🧭 Roads</button>
+                        <button id="sidewalkFlowfieldBtn" class="secondary" onclick="toggleFlowfieldOverlay('sidewalks')"
+                            title="Toggle sidewalk flowfield overlay">🚶 Sidewalks</button>
+                        <label style="margin-left: 10px; display: flex; align-items: center; gap: 4px; cursor: pointer;" title="Show altitude as grayscale overlay">
+                            <input type="checkbox" id="altitudeOverlayCheckbox" onchange="toggleAltitudeOverlay(this.checked)">
+                            <span style="font-size: 12px; white-space: nowrap;">🏔️ Altitude</span>
+                        </label>
                         <button class="danger" onclick="clearAll()" style="margin-left: auto;">⚠️ Clear All</button>
                     </div>
                     <div id="roadInfo" style="margin-top: 10px;">Generate terrain to begin.</div>
@@ -969,6 +1004,15 @@
             <div class="panel panel-export">
                 <h3>💾 Export</h3>
 
+                <div class="section-title">📂 Save / Load Map</div>
+                <div class="info-text" style="margin-bottom: 8px; font-size: 11px;">
+                    Save your map to continue editing later, or load a previously saved map.
+                </div>
+                <div style="display: flex; gap: 8px; margin-bottom: 15px;">
+                    <button style="flex: 1;" onclick="saveMap()">💾 Save</button>
+                    <button style="flex: 1;" onclick="loadMap()">📂 Load</button>
+                </div>
+
                 <div class="section-title">🎨 Material Definitions</div>
                 <div class="info-text" style="margin-bottom: 8px; font-size: 11px;">
                     Define altitude ranges, material number and color. Colors are applied to the map.
@@ -981,31 +1025,25 @@
 
                 <div style="margin-top: 10px; padding: 8px; background: rgba(0, 0, 0, 0.2); border-radius: 6px;">
                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                        <input type="checkbox" id="roadsAsMaterial" onchange="toggleRoadMaterial()">
-                        <span style="flex: 1;">Roads as material</span>
+                        <input type="checkbox" id="roadsAsMaterial" checked disabled>
+                        <span style="flex: 1; color: #888;">Roads as material (always on)</span>
                     </label>
-                    <div id="roadMaterialInput" style="display: none; margin-top: 8px;">
-                        <label style="font-size: 11px;">
-                            Material number:
-                            <input type="number" id="roadMaterialNumber" value="99" min="0" max="255"
-                                style="width: 60px;">
-                        </label>
-                    </div>
+                    <input type="hidden" id="roadMaterialNumber" value="99">
+                    <input type="hidden" id="roadMaterialDepth" value="100">
                 </div>
 
                 <div style="margin-top: 6px; padding: 8px; background: rgba(0, 0, 0, 0.2); border-radius: 6px;">
                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                        <input type="checkbox" id="sidewalksAsMaterial" onchange="toggleSidewalkMaterial()">
-                        <span style="flex: 1;">Sidewalks as material</span>
+                        <input type="checkbox" id="sidewalksAsMaterial" checked disabled>
+                        <span style="flex: 1; color: #888;">Sidewalks as material (always on)</span>
                     </label>
-                    <div id="sidewalkMaterialInput" style="display: none; margin-top: 8px;">
-                        <label style="font-size: 11px;">
-                            Material number:
-                            <input type="number" id="sidewalkMaterialNumber" value="98" min="0" max="255"
-                                style="width: 60px;">
-                        </label>
-                    </div>
+                    <input type="hidden" id="sidewalkMaterialNumber" value="98">
+                    <input type="hidden" id="sidewalkMaterialDepth" value="99">
                 </div>
+                
+                <p style="font-size: 10px; color: #666; margin-top: 8px; text-align: center;">
+                    Drag items above to change layer order
+                </p>
 
                 <div style="margin-top: 15px;">
                     <label style="font-size: 12px; color: #b0b0b0; margin-bottom: 6px; display: block;">
@@ -1016,11 +1054,32 @@
                         <option value="materials">Materials Only (2D Array of Numbers)</option>
                         <option value="layers">Material Layers (Binary, One Layer Per Material)</option>
                         <option value="objects">Objects Only (Simplified Format)</option>
-                        <option value="flowfield_roads">Flowfield - Roads (Direction + Distance)</option>
+                        <option value="flowfield_roads">Flowfield - Roads (Direction + Attraction)</option>
+                        <option value="flowfield_sidewalks">Flowfield - Sidewalks (Bidirectional)</option>
+                        <option value="flowfields_all">Flowfields - All (Roads + Sidewalks)</option>
                     </select>
                 </div>
 
                 <button style="width: 100%;" onclick="exportMapData()">📥 Export JSON</button>
+
+                <div class="section-divider">
+                    <div class="section-title">🖼️ Image Export</div>
+                    <div class="param-grid" style="margin-bottom: 10px;">
+                        <label class="tooltip"
+                            data-tooltip="Scale for exported image. 1.0 = full resolution based on cell size.">
+                            Export scale:
+                            <select id="imageExportScale" style="width: 100%;">
+                                <option value="0.25">25% (Preview)</option>
+                                <option value="0.5">50%</option>
+                                <option value="1" selected>100% (Full)</option>
+                                <option value="2">200% (High-res)</option>
+                            </select>
+                        </label>
+                    </div>
+                    <button style="width: 100%;"
+                        onclick="exportMapImage(parseFloat(document.getElementById('imageExportScale').value))">🖼️
+                        Export PNG Image</button>
+                </div>
             </div>
         </div>
     </div>
@@ -1039,6 +1098,7 @@
     <script src="js/materials.js"></script>
     <script src="js/flowfield.js"></script>
     <script src="js/export.js"></script>
+    <script src="js/savefile.js"></script>
     <script src="js/renderer.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/init.js"></script>

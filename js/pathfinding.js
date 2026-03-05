@@ -3,10 +3,12 @@ function isPassable(x, y) {
     return grid[y][x].isPassable;
 }
 
-function canBeRoad(x, y, maxHousesToDestroy = null, checkAltitude = true) {
+function canBeRoad(x, y, maxHousesToDestroy = null, checkAltitude = true, checkPassability = true) {
     if (!grid || !grid[y] || !grid[y][x]) return false;
     const cell = grid[y][x];
-    if (!cell.isPassable) return false;
+    
+    // Only check passability if specified (skip for pathfinding to allow roads anywhere)
+    if (checkPassability && !cell.isPassable) return false;
 
     // Only check altitude if specified (for start/end point validation)
     if (checkAltitude) {
@@ -99,8 +101,8 @@ function getNeighbors(cell, maxHousesToDestroy) {
         const nx = cell.x + dir.x;
         const ny = cell.y + dir.y;
         if (ny >= 0 && ny < grid.length && nx >= 0 && nx < grid[0].length) {
-            // Don't check altitude during pathfinding - draw complete roads
-            if (canBeRoad(nx, ny, maxHousesToDestroy, false)) {
+            // Skip altitude and passability checks - allow roads on any cell
+            if (canBeRoad(nx, ny, maxHousesToDestroy, false, false)) {
                 neighbors.push({ x: nx, y: ny });
             }
         }
@@ -126,41 +128,31 @@ function expandRoadPath(path, width, maxHousesToDestroy) {
     const expandedSet = new Set();
     const expandedPath = [];
 
-    path.forEach(cell => {
-        expandedSet.add(key(cell));
-        expandedPath.push({ x: cell.x, y: cell.y });
-    });
+    // Calculate the radius to expand from each centerline cell
+    // For width W, we want W cells total, so radius = floor((W-1)/2)
+    const radius = Math.floor((width - 1) / 2);
 
-    let currentLayer = [...path];
-    const layersToAdd = width - 1;
+    // For each cell in the centerline, add all cells within the radius
+    // This guarantees consistent width regardless of path direction
+    for (const centerCell of path) {
+        // Add all cells in a square of size (2*radius+1) centered on this cell
+        for (let dy = -radius; dy <= radius; dy++) {
+            for (let dx = -radius; dx <= radius; dx++) {
+                const nx = centerCell.x + dx;
+                const ny = centerCell.y + dy;
+                const nKey = key({ x: nx, y: ny });
 
-    for (let layer = 0; layer < layersToAdd; layer++) {
-        const nextLayer = [];
-
-        for (const cell of currentLayer) {
-            const neighbors = [
-                { x: cell.x, y: cell.y + 1 },
-                { x: cell.x + 1, y: cell.y }
-            ];
-
-            for (const neighbor of neighbors) {
-                const nKey = key(neighbor);
-
+                // Skip if already added
                 if (expandedSet.has(nKey)) continue;
 
-                if (neighbor.y < 0 || neighbor.y >= grid.length) continue;
-                if (neighbor.x < 0 || neighbor.x >= grid[0].length) continue;
+                // Check grid bounds only - expand to ALL cells regardless of altitude/materials
+                if (ny < 0 || ny >= grid.length) continue;
+                if (nx < 0 || nx >= grid[0].length) continue;
 
-                // Don't check altitude when expanding road width
-                if (canBeRoad(neighbor.x, neighbor.y, maxHousesToDestroy, false)) {
-                    expandedSet.add(nKey);
-                    expandedPath.push({ x: neighbor.x, y: neighbor.y });
-                    nextLayer.push(neighbor);
-                }
+                expandedSet.add(nKey);
+                expandedPath.push({ x: nx, y: ny });
             }
         }
-
-        currentLayer = nextLayer;
     }
 
     return expandedPath;

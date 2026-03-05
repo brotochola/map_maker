@@ -44,17 +44,16 @@ function handleCanvasClick(event) {
     const y = Math.floor(canvasY / cellSize);
 
     if (y >= 0 && y < grid.length && x >= 0 && x < grid[0].length) {
-        if (!canBeRoad(x, y)) {
+        // Check altitude and houses, but skip hardcoded passability - user defines what's passable via materials
+        if (!canBeRoad(x, y, null, true, false)) {
             const cell = grid[y][x];
             const minAltitude = parseFloat(document.getElementById('roadMinAltitude').value) || 0;
             const maxAltitude = parseFloat(document.getElementById('roadMaxAltitude').value) || 1;
 
-            if (!isPassable(x, y)) {
-                showInfo(`Cell (${x}, ${y}) is impassable.`);
-            } else if (cell.noise < minAltitude || cell.noise > maxAltitude) {
+            if (cell.noise < minAltitude || cell.noise > maxAltitude) {
                 showInfo(`Cell (${x}, ${y}) altitude ${cell.noise.toFixed(2)} outside allowed range (${minAltitude}-${maxAltitude}).`);
             } else {
-                showInfo(`Cell (${x}, ${y}) has houses. Cannot be road start/end.`);
+                showInfo(`Cell (${x}, ${y}) has too many houses. Cannot be road start/end.`);
             }
             return;
         }
@@ -116,6 +115,9 @@ function createRoad() {
 
     roads.push(roadEntity);
     flowfieldOverlay = null;
+    sidewalkFlowfield = null;
+    showingFlowfieldType = 'none';
+    if (typeof resetFlowfieldButtons === 'function') resetFlowfieldButtons();
 
     let destroyedHouses = 0;
     let destroyedRocks = 0;
@@ -198,6 +200,9 @@ function deleteRoad(roadId) {
 
     roads.splice(roadIndex, 1);
     flowfieldOverlay = null;
+    sidewalkFlowfield = null;
+    showingFlowfieldType = 'none';
+    if (typeof resetFlowfieldButtons === 'function') resetFlowfieldButtons();
     updateUI();
     drawGrid();
 }

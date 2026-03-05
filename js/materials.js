@@ -1,7 +1,6 @@
 // ============== MATERIAL DEFINITIONS ==============
 function addMaterialDefinition(minAlt = 0, maxAlt = 0.1, materialNum = 1, name = '', color = '#ffffff', depth = null) {
     const id = materialIdCounter++;
-    // Auto-assign depth based on current max depth + 1 if not provided
     if (depth === null) {
         const maxDepth = materialDefinitions.length > 0 
             ? Math.max(...materialDefinitions.map(m => m.depth || 0)) 
@@ -17,61 +16,179 @@ function addMaterialDefinition(minAlt = 0, maxAlt = 0.1, materialNum = 1, name =
         color: color,
         depth: depth
     });
+    invalidateMaterialsCache();
     updateMaterialsList();
 }
 
 function deleteMaterialDefinition(id) {
     materialDefinitions = materialDefinitions.filter(m => m.id !== id);
+    invalidateMaterialsCache();
     updateMaterialsList();
     drawGrid();
 }
 
 function updateMaterialsList() {
     const container = document.getElementById('materialsList');
-    if (materialDefinitions.length === 0) {
-        container.innerHTML = '<div style="color: #666; font-size: 11px; text-align: center; padding: 8px;">No materials defined</div>';
-        return;
-    }
+    
+    // Build unified list of all materials including roads and sidewalks
+    const allItems = [];
+    
+    // Add regular materials
+    materialDefinitions.forEach(mat => {
+        allItems.push({
+            type: 'material',
+            id: mat.id,
+            name: mat.name,
+            color: mat.color,
+            minAltitude: mat.minAltitude,
+            maxAltitude: mat.maxAltitude,
+            materialNumber: mat.materialNumber,
+            depth: mat.depth,
+            deletable: true
+        });
+    });
+    
+    // Add sidewalk (always present)
+    allItems.push({
+        type: 'sidewalk',
+        id: 'sidewalk',
+        name: 'Sidewalk',
+        color: sidewalkColor,
+        materialNumber: sidewalkMaterialNumber,
+        depth: sidewalkMaterialDepth,
+        deletable: false
+    });
+    
+    // Add road (always present)
+    allItems.push({
+        type: 'road',
+        id: 'road',
+        name: 'Road',
+        color: roadColor,
+        materialNumber: roadMaterialNumber,
+        depth: roadMaterialDepth,
+        deletable: false
+    });
+    
+    // Sort all items by depth
+    allItems.sort((a, b) => a.depth - b.depth);
 
-    // Sort by depth for rendering order (lower depth = rendered first = appears below)
-    const sortedMaterials = [...materialDefinitions].sort((a, b) => a.depth - b.depth);
-
-    container.innerHTML = sortedMaterials.map(mat => `
-        <div class="material-item" draggable="true" data-material-id="${mat.id}">
-            <span class="drag-handle" title="Drag to reorder">⋮⋮</span>
-            <input type="color" value="${mat.color}" 
-                   onchange="updateMaterialColor(${mat.id}, this.value)" 
-                   title="Material color">
-            <input type="text" value="${mat.name}" 
-                   onchange="updateMaterialName(${mat.id}, this.value)" 
-                   placeholder="Name"
-                   title="Material name">
-            <input type="number" value="${mat.minAltitude}" 
-                   onchange="updateMaterialMin(${mat.id}, this.value)" 
-                   min="0" max="1" step="0.01"
-                   title="Min altitude">
-            <span style="color: #666;">-</span>
-            <input type="number" value="${mat.maxAltitude}" 
-                   onchange="updateMaterialMax(${mat.id}, this.value)" 
-                   min="0" max="1" step="0.01"
-                   title="Max altitude">
-            <span style="color: #666;">=</span>
-            <input type="number" value="${mat.materialNumber}" 
-                   onchange="updateMaterialNumber(${mat.id}, this.value)" 
-                   min="0" max="255"
-                   title="Material number">
-            <span class="depth-label">D:</span>
-            <input type="number" value="${mat.depth}" 
-                   onchange="updateMaterialDepth(${mat.id}, this.value)" 
-                   min="0" max="99"
-                   class="depth-input"
-                   title="Depth (render order: lower = below)">
-            <button class="delete-btn small danger" onclick="deleteMaterialDefinition(${mat.id})" title="Delete">🗑️</button>
-        </div>
-    `).join('');
+    container.innerHTML = allItems.map(item => {
+        if (item.type === 'material') {
+            return `
+                <div class="material-item" draggable="true" data-material-id="${item.id}" data-item-type="material">
+                    <span class="drag-handle" title="Drag to reorder">⋮⋮</span>
+                    <input type="color" value="${item.color}" 
+                           onchange="updateMaterialColor(${item.id}, this.value)" 
+                           title="Material color">
+                    <input type="text" value="${item.name}" 
+                           onchange="updateMaterialName(${item.id}, this.value)" 
+                           placeholder="Name"
+                           title="Material name">
+                    <input type="number" value="${item.minAltitude}" 
+                           onchange="updateMaterialMin(${item.id}, this.value)" 
+                           min="0" max="1" step="0.01"
+                           title="Min altitude">
+                    <span style="color: #666;">-</span>
+                    <input type="number" value="${item.maxAltitude}" 
+                           onchange="updateMaterialMax(${item.id}, this.value)" 
+                           min="0" max="1" step="0.01"
+                           title="Max altitude">
+                    <span style="color: #666;">=</span>
+                    <input type="number" value="${item.materialNumber}" 
+                           onchange="updateMaterialNumber(${item.id}, this.value)" 
+                           min="0" max="255"
+                           title="Material number">
+                    <span class="depth-label">D:</span>
+                    <input type="number" value="${item.depth}" 
+                           onchange="updateMaterialDepth(${item.id}, this.value)" 
+                           min="0" max="999"
+                           class="depth-input"
+                           title="Depth (render order: lower = below)">
+                    <button class="delete-btn small danger" onclick="deleteMaterialDefinition(${item.id})" title="Delete">🗑️</button>
+                </div>`;
+        } else if (item.type === 'sidewalk') {
+            return `
+                <div class="material-item special-material" draggable="true" data-material-id="sidewalk" data-item-type="sidewalk">
+                    <span class="drag-handle" title="Drag to reorder">⋮⋮</span>
+                    <input type="color" value="${item.color}" 
+                           onchange="updateSidewalkColor(this.value)" 
+                           title="Sidewalk color">
+                    <span class="special-name">🚶 Sidewalk</span>
+                    <span style="color: #666; margin-left: auto;">=</span>
+                    <input type="number" value="${item.materialNumber}" 
+                           onchange="updateSidewalkMaterialNumber(this.value)" 
+                           min="0" max="255"
+                           style="width: 50px;"
+                           title="Material number">
+                    <span class="depth-label">D:</span>
+                    <input type="number" value="${item.depth}" 
+                           onchange="updateSidewalkMaterialDepth(this.value)" 
+                           min="0" max="999"
+                           class="depth-input"
+                           title="Depth (render order: lower = below)">
+                    <span style="width: 28px;"></span>
+                </div>`;
+        } else if (item.type === 'road') {
+            return `
+                <div class="material-item special-material" draggable="true" data-material-id="road" data-item-type="road">
+                    <span class="drag-handle" title="Drag to reorder">⋮⋮</span>
+                    <input type="color" value="${item.color}" 
+                           onchange="updateAllRoadColors(this.value)" 
+                           title="Road color">
+                    <span class="special-name">🛣️ Road</span>
+                    <span style="color: #666; margin-left: auto;">=</span>
+                    <input type="number" value="${item.materialNumber}" 
+                           onchange="updateRoadMaterialNumber(this.value)" 
+                           min="0" max="255"
+                           style="width: 50px;"
+                           title="Material number">
+                    <span class="depth-label">D:</span>
+                    <input type="number" value="${item.depth}" 
+                           onchange="updateRoadMaterialDepth(this.value)" 
+                           min="0" max="999"
+                           class="depth-input"
+                           title="Depth (render order: lower = below)">
+                    <span style="width: 28px;"></span>
+                </div>`;
+        }
+    }).join('');
 
     // Setup drag and drop handlers
     setupMaterialDragAndDrop();
+}
+
+function updateSidewalkColor(color) {
+    sidewalkColor = color;
+    drawGrid();
+}
+
+function updateSidewalkMaterialNumber(value) {
+    sidewalkMaterialNumber = parseInt(value) || 98;
+    const input = document.getElementById('sidewalkMaterialNumber');
+    if (input) input.value = sidewalkMaterialNumber;
+}
+
+function updateSidewalkMaterialDepth(value) {
+    sidewalkMaterialDepth = parseInt(value) || 99;
+    const input = document.getElementById('sidewalkMaterialDepth');
+    if (input) input.value = sidewalkMaterialDepth;
+    updateMaterialsList();
+    drawGrid();
+}
+
+function updateRoadMaterialNumber(value) {
+    roadMaterialNumber = parseInt(value) || 99;
+    const input = document.getElementById('roadMaterialNumber');
+    if (input) input.value = roadMaterialNumber;
+}
+
+function updateRoadMaterialDepth(value) {
+    roadMaterialDepth = parseInt(value) || 100;
+    const input = document.getElementById('roadMaterialDepth');
+    if (input) input.value = roadMaterialDepth;
+    updateMaterialsList();
+    drawGrid();
 }
 
 
@@ -88,6 +205,7 @@ function updateMaterialMin(id, value) {
     const mat = materialDefinitions.find(m => m.id === id);
     if (mat) {
         mat.minAltitude = parseFloat(value);
+        invalidateMaterialsCache();
         drawGrid();
     }
 }
@@ -96,6 +214,7 @@ function updateMaterialMax(id, value) {
     const mat = materialDefinitions.find(m => m.id === id);
     if (mat) {
         mat.maxAltitude = parseFloat(value);
+        invalidateMaterialsCache();
         drawGrid();
     }
 }
@@ -109,6 +228,7 @@ function updateMaterialColor(id, value) {
     const mat = materialDefinitions.find(m => m.id === id);
     if (mat) {
         mat.color = value;
+        invalidateMaterialsCache();
         drawGrid();
     }
 }
@@ -117,13 +237,15 @@ function updateMaterialDepth(id, value) {
     const mat = materialDefinitions.find(m => m.id === id);
     if (mat) {
         mat.depth = parseInt(value) || 0;
+        invalidateMaterialsCache();
         updateMaterialsList();
         drawGrid();
     }
 }
 
 // Drag and drop functionality for materials
-let draggedMaterialId = null;
+let draggedItemId = null;
+let draggedItemType = null;
 
 function setupMaterialDragAndDrop() {
     const container = document.getElementById('materialsList');
@@ -140,10 +262,11 @@ function setupMaterialDragAndDrop() {
 }
 
 function handleMaterialDragStart(e) {
-    draggedMaterialId = parseInt(this.dataset.materialId);
+    draggedItemId = this.dataset.materialId;
+    draggedItemType = this.dataset.itemType;
     this.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', draggedMaterialId);
+    e.dataTransfer.setData('text/plain', draggedItemId);
 }
 
 function handleMaterialDragEnd(e) {
@@ -151,7 +274,8 @@ function handleMaterialDragEnd(e) {
     document.querySelectorAll('.material-item').forEach(item => {
         item.classList.remove('drag-over');
     });
-    draggedMaterialId = null;
+    draggedItemId = null;
+    draggedItemType = null;
 }
 
 function handleMaterialDragOver(e) {
@@ -161,8 +285,8 @@ function handleMaterialDragOver(e) {
 
 function handleMaterialDragEnter(e) {
     e.preventDefault();
-    const targetId = parseInt(this.dataset.materialId);
-    if (targetId !== draggedMaterialId) {
+    const targetId = this.dataset.materialId;
+    if (targetId !== draggedItemId) {
         this.classList.add('drag-over');
     }
 }
@@ -171,58 +295,74 @@ function handleMaterialDragLeave(e) {
     this.classList.remove('drag-over');
 }
 
+function getItemDepth(itemId, itemType) {
+    if (itemType === 'road') return roadMaterialDepth;
+    if (itemType === 'sidewalk') return sidewalkMaterialDepth;
+    const mat = materialDefinitions.find(m => m.id === parseInt(itemId));
+    return mat ? mat.depth : 0;
+}
+
+function setItemDepth(itemId, itemType, depth) {
+    if (itemType === 'road') {
+        roadMaterialDepth = depth;
+    } else if (itemType === 'sidewalk') {
+        sidewalkMaterialDepth = depth;
+    } else {
+        const mat = materialDefinitions.find(m => m.id === parseInt(itemId));
+        if (mat) mat.depth = depth;
+    }
+}
+
 function handleMaterialDrop(e) {
     e.preventDefault();
     this.classList.remove('drag-over');
     
-    const targetId = parseInt(this.dataset.materialId);
-    if (targetId === draggedMaterialId) return;
+    const targetId = this.dataset.materialId;
+    const targetType = this.dataset.itemType;
     
-    const draggedMat = materialDefinitions.find(m => m.id === draggedMaterialId);
-    const targetMat = materialDefinitions.find(m => m.id === targetId);
+    if (targetId === draggedItemId && targetType === draggedItemType) return;
     
-    if (!draggedMat || !targetMat) return;
+    // Get depths
+    const draggedDepth = getItemDepth(draggedItemId, draggedItemType);
+    const targetDepth = getItemDepth(targetId, targetType);
     
     // Swap depths
-    const tempDepth = draggedMat.depth;
-    draggedMat.depth = targetMat.depth;
-    targetMat.depth = tempDepth;
+    setItemDepth(draggedItemId, draggedItemType, targetDepth);
+    setItemDepth(targetId, targetType, draggedDepth);
     
+    invalidateMaterialsCache();
     updateMaterialsList();
     drawGrid();
 }
 
 function toggleRoadMaterial() {
-    const checkbox = document.getElementById('roadsAsMaterial');
-    const input = document.getElementById('roadMaterialInput');
-    input.style.display = checkbox.checked ? 'block' : 'none';
+    // No longer needed - roads are always materials
 }
 
 function toggleSidewalkMaterial() {
-    const checkbox = document.getElementById('sidewalksAsMaterial');
-    const input = document.getElementById('sidewalkMaterialInput');
-    input.style.display = checkbox.checked ? 'block' : 'none';
+    // No longer needed - sidewalks are always materials
 }
 
 function initializeDefaultMaterials() {
     materialDefinitions = [];
     materialIdCounter = 1;
-    // depth parameter controls render order (lower = rendered first = appears below)
+    // Initialize road/sidewalk depths
+    roadMaterialDepth = 100;
+    sidewalkMaterialDepth = 99;
+    roadMaterialNumber = 99;
+    sidewalkMaterialNumber = 98;
+    // Default terrain materials
     addMaterialDefinition(0, 1, 10, 'bg', '#ffffff', 0);
     addMaterialDefinition(0.1, 0.3, 1, 'dry_grass', '#c4a44a', 1);
     addMaterialDefinition(0.25, 0.5, 2, 'green_grass', '#4a8c4a', 2);
     addMaterialDefinition(0.45, 0.6, 3, 'dark_grass', '#2d5c2d', 3);
     addMaterialDefinition(0.7, 0.8, 4, 'sidewalk', '#8c8c8c', 4);
     addMaterialDefinition(0.75, 1.0, 5, 'house_area', '#6b4423', 5);
+    invalidateMaterialsCache();
 }
 
 function generateMaterialsArray() {
     if (!grid || grid.length === 0) return [];
-
-    const roadsAsMaterial = document.getElementById('roadsAsMaterial').checked;
-    const roadMaterialNum = parseInt(document.getElementById('roadMaterialNumber').value) || 99;
-    const sidewalksAsMaterial = document.getElementById('sidewalksAsMaterial').checked;
-    const sidewalkMaterialNum = parseInt(document.getElementById('sidewalkMaterialNumber').value) || 98;
 
     const materialsArray = [];
 
@@ -231,10 +371,11 @@ function generateMaterialsArray() {
         for (let x = 0; x < grid[y].length; x++) {
             const cell = grid[y][x];
 
-            if (roadsAsMaterial && cell.roadIds.length > 0) {
-                row.push(roadMaterialNum);
-            } else if (sidewalksAsMaterial && cell.sidewalkRoadIds.length > 0) {
-                row.push(sidewalkMaterialNum);
+            // Roads and sidewalks are always materials
+            if (cell.roadIds.length > 0) {
+                row.push(roadMaterialNumber);
+            } else if (cell.sidewalkRoadIds.length > 0) {
+                row.push(sidewalkMaterialNumber);
             } else {
                 const altitude = cell.noise;
                 let materialNum = 0;
@@ -258,10 +399,6 @@ function generateMaterialsArray() {
 function generateLayeredMaterialsArray() {
     if (!grid || grid.length === 0) return [];
 
-    const roadsAsMaterial = document.getElementById('roadsAsMaterial').checked;
-    const roadMaterialNum = parseInt(document.getElementById('roadMaterialNumber').value) || 99;
-    const sidewalksAsMaterial = document.getElementById('sidewalksAsMaterial').checked;
-    const sidewalkMaterialNum = parseInt(document.getElementById('sidewalkMaterialNumber').value) || 98;
     const roadDestroyMaterials = document.getElementById('roadDestroyMaterials').checked;
 
     const layers = [];
@@ -280,9 +417,9 @@ function generateLayeredMaterialsArray() {
                 const altitude = cell.noise;
 
                 if (altitude >= mat.minAltitude && altitude < mat.maxAltitude) {
-                    if (roadDestroyMaterials && roadsAsMaterial && cell.roadIds.length > 0) {
+                    if (roadDestroyMaterials && cell.roadIds.length > 0) {
                         row.push(0);
-                    } else if (roadDestroyMaterials && sidewalksAsMaterial && cell.sidewalkRoadIds.length > 0) {
+                    } else if (roadDestroyMaterials && cell.sidewalkRoadIds.length > 0) {
                         row.push(0);
                     } else {
                         row.push(1);
@@ -302,52 +439,42 @@ function generateLayeredMaterialsArray() {
         });
     }
 
-    let currentMaxDepth = sortedMaterials.length > 0 
-        ? Math.max(...sortedMaterials.map(m => m.depth)) + 1 
-        : 0;
-
-    // Add sidewalk layer if sidewalks are treated as material
-    if (sidewalksAsMaterial) {
-        const sidewalkLayerData = [];
-
-        for (let y = 0; y < grid.length; y++) {
-            const row = [];
-            for (let x = 0; x < grid[y].length; x++) {
-                const cell = grid[y][x];
-                row.push(cell.sidewalkRoadIds.length > 0 ? 1 : 0);
-            }
-            sidewalkLayerData.push(row);
+    // Add sidewalk layer (always present)
+    const sidewalkLayerData = [];
+    for (let y = 0; y < grid.length; y++) {
+        const row = [];
+        for (let x = 0; x < grid[y].length; x++) {
+            const cell = grid[y][x];
+            row.push(cell.sidewalkRoadIds.length > 0 ? 1 : 0);
         }
-
-        layers.push({
-            name: 'Sidewalk',
-            materialNumber: sidewalkMaterialNum,
-            depth: currentMaxDepth,
-            data: sidewalkLayerData
-        });
-        currentMaxDepth++;
+        sidewalkLayerData.push(row);
     }
+    layers.push({
+        name: 'Sidewalk',
+        materialNumber: sidewalkMaterialNumber,
+        depth: sidewalkMaterialDepth,
+        data: sidewalkLayerData
+    });
 
-    // Add road layer if roads are treated as material
-    if (roadsAsMaterial) {
-        const roadLayerData = [];
-
-        for (let y = 0; y < grid.length; y++) {
-            const row = [];
-            for (let x = 0; x < grid[y].length; x++) {
-                const cell = grid[y][x];
-                row.push(cell.roadIds.length > 0 ? 1 : 0);
-            }
-            roadLayerData.push(row);
+    // Add road layer (always present)
+    const roadLayerData = [];
+    for (let y = 0; y < grid.length; y++) {
+        const row = [];
+        for (let x = 0; x < grid[y].length; x++) {
+            const cell = grid[y][x];
+            row.push(cell.roadIds.length > 0 ? 1 : 0);
         }
-
-        layers.push({
-            name: 'Road',
-            materialNumber: roadMaterialNum,
-            depth: currentMaxDepth,
-            data: roadLayerData
-        });
+        roadLayerData.push(row);
     }
+    layers.push({
+        name: 'Road',
+        materialNumber: roadMaterialNumber,
+        depth: roadMaterialDepth,
+        data: roadLayerData
+    });
+
+    // Sort all layers by depth before returning
+    layers.sort((a, b) => a.depth - b.depth);
 
     return layers;
 }
