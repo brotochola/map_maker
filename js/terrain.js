@@ -3,28 +3,56 @@ function updateTileCountLabels() {
     const widthPx = parseInt(document.getElementById('widthPx').value) || 1280;
     const heightPx = parseInt(document.getElementById('heightPx').value) || 640;
     const cs = parseInt(document.getElementById('cellSizeInput').value) || 128;
-    
-    const tilesX = Math.floor(widthPx / cs);
-    const tilesY = Math.floor(heightPx / cs);
-    
-    document.getElementById('tilesXLabel').textContent = `= ${tilesX} tiles`;
-    document.getElementById('tilesYLabel').textContent = `= ${tilesY} tiles`;
+    const previewScale = parseFloat(document.getElementById('renderScaleSelect')?.value) || renderScale;
+    const metrics = buildMapMetrics(widthPx, heightPx, cs, previewScale);
+    const sizeHint = document.getElementById('mapSizeHint');
+
+    document.getElementById('tilesXLabel').textContent = `= ${metrics.tilesX} tiles`;
+    document.getElementById('tilesYLabel').textContent = `= ${metrics.tilesY} tiles`;
+
+    if (!sizeHint) return;
+
+    sizeHint.className = 'info-text size-hint';
+
+    if (metrics.tilesX < 1 || metrics.tilesY < 1) {
+        sizeHint.textContent = 'Increase width/height or lower cell size to create at least 1 tile.';
+        return;
+    }
+
+    sizeHint.textContent =
+        `Map: ${metrics.totalCells.toLocaleString()} tiles. ` +
+        `Preview: ${metrics.previewWidth.toLocaleString()}x${metrics.previewHeight.toLocaleString()} px at ${Math.round(metrics.previewScale * 100)}%.`;
+
+    if (metrics.isCellDanger || metrics.isPreviewDanger) {
+        sizeHint.classList.add('danger');
+        sizeHint.textContent +=
+            ` Very large map. It may become slow or freeze the browser while generating or updating preview.`;
+        return;
+    }
+
+    if (metrics.isCellWarning || metrics.isPreviewWarning) {
+        sizeHint.classList.add('warning');
+        sizeHint.textContent +=
+            ` Large map. Recommended to stay under ${MAP_SIZE_WARNING_CELLS.toLocaleString()} tiles for smoother editing.`;
+    }
 }
 
 // ============== GRID GENERATION ==============
 function generateGrid() {
     const widthPx = parseInt(document.getElementById('widthPx').value) || 1280;
     const heightPx = parseInt(document.getElementById('heightPx').value) || 640;
-    cellSize = parseInt(document.getElementById('cellSizeInput').value) || 128;
-    
-    // Calculate number of cells from pixel dimensions
-    const w = Math.floor(widthPx / cellSize);
-    const h = Math.floor(heightPx / cellSize);
+    const nextCellSize = parseInt(document.getElementById('cellSizeInput').value) || 128;
+    const previewScale = parseFloat(document.getElementById('renderScaleSelect')?.value) || renderScale;
+    const metrics = buildMapMetrics(widthPx, heightPx, nextCellSize, previewScale);
+    const w = metrics.tilesX;
+    const h = metrics.tilesY;
     
     if (w < 1 || h < 1) {
         showInfo('Map dimensions too small for the cell size.');
         return;
     }
+
+    cellSize = nextCellSize;
     
     const scale = parseFloat(document.getElementById('scale').value);
     const octaves = parseInt(document.getElementById('octaves').value);
@@ -83,7 +111,15 @@ function generateGrid() {
     updateUI();
     drawGrid();
     fitToView();
-    showInfo(`Terrain generated: ${w}x${h} tiles (${widthPx}x${heightPx}px). Enable road mode to create roads.`);
+    showInfo(
+        `Terrain generated: ${w}x${h} tiles (${widthPx}x${heightPx}px). ` +
+        `Enable road mode to create roads.` +
+        (metrics.isCellDanger || metrics.isPreviewDanger
+            ? ' Very large map detected; it may become slow or freeze during preview updates.'
+            : (metrics.isCellWarning || metrics.isPreviewWarning
+                ? ' Large map detected; use Update Preview after tweaking visual settings.'
+                : ''))
+    );
 }
 
 // ============== COLORS ==============

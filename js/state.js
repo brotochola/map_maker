@@ -31,6 +31,46 @@ let lastPanY = 0;
 
 // Render scale
 let renderScale = 0.1;
+const MAP_SIZE_WARNING_CELLS = 30000;
+const MAP_SIZE_DANGER_CELLS = 50000;
+const PREVIEW_PIXEL_WARNING = 4000000;
+const PREVIEW_PIXEL_DANGER = 8000000;
+let previewDirty = false;
+
+function buildMapMetrics(widthPx, heightPx, cs, previewScale = renderScale) {
+    const safeCellSize = Math.max(1, parseInt(cs, 10) || 1);
+    const safeWidthPx = Math.max(0, parseInt(widthPx, 10) || 0);
+    const safeHeightPx = Math.max(0, parseInt(heightPx, 10) || 0);
+    const safePreviewScale = Math.max(0.01, parseFloat(previewScale) || 0.1);
+
+    const tilesX = Math.floor(safeWidthPx / safeCellSize);
+    const tilesY = Math.floor(safeHeightPx / safeCellSize);
+    const totalCells = tilesX * tilesY;
+    const effectiveWidthPx = tilesX * safeCellSize;
+    const effectiveHeightPx = tilesY * safeCellSize;
+    const previewWidth = Math.ceil(effectiveWidthPx * safePreviewScale);
+    const previewHeight = Math.ceil(effectiveHeightPx * safePreviewScale);
+    const previewPixels = previewWidth * previewHeight;
+
+    return {
+        widthPx: safeWidthPx,
+        heightPx: safeHeightPx,
+        cellSize: safeCellSize,
+        previewScale: safePreviewScale,
+        tilesX,
+        tilesY,
+        totalCells,
+        effectiveWidthPx,
+        effectiveHeightPx,
+        previewWidth,
+        previewHeight,
+        previewPixels,
+        isCellWarning: totalCells > MAP_SIZE_WARNING_CELLS,
+        isCellDanger: totalCells > MAP_SIZE_DANGER_CELLS,
+        isPreviewWarning: previewPixels > PREVIEW_PIXEL_WARNING,
+        isPreviewDanger: previewPixels > PREVIEW_PIXEL_DANGER
+    };
+}
 
 // Default road color (user can change via color picker)
 let roadColor = '#FFD700';
@@ -50,6 +90,7 @@ let sidewalkMaterialNumber = 98;
 let flowfieldOverlay = null;
 let sidewalkFlowfield = null;
 let roadAttractionWidth = 3;
+let sidewalkAttractionWidth = 2;
 let showingFlowfieldType = 'none'; // 'none', 'roads', 'sidewalks'
 
 // Altitude overlay

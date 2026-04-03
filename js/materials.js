@@ -18,13 +18,14 @@ function addMaterialDefinition(minAlt = 0, maxAlt = 0.1, materialNum = 1, name =
     });
     invalidateMaterialsCache();
     updateMaterialsList();
+    markPreviewDirty();
 }
 
 function deleteMaterialDefinition(id) {
     materialDefinitions = materialDefinitions.filter(m => m.id !== id);
     invalidateMaterialsCache();
     updateMaterialsList();
-    drawGrid();
+    markPreviewDirty();
 }
 
 function updateMaterialsList() {
@@ -160,7 +161,7 @@ function updateMaterialsList() {
 
 function updateSidewalkColor(color) {
     sidewalkColor = color;
-    drawGrid();
+    markPreviewDirty();
 }
 
 function updateSidewalkMaterialNumber(value) {
@@ -174,7 +175,6 @@ function updateSidewalkMaterialDepth(value) {
     const input = document.getElementById('sidewalkMaterialDepth');
     if (input) input.value = sidewalkMaterialDepth;
     updateMaterialsList();
-    drawGrid();
 }
 
 function updateRoadMaterialNumber(value) {
@@ -188,7 +188,6 @@ function updateRoadMaterialDepth(value) {
     const input = document.getElementById('roadMaterialDepth');
     if (input) input.value = roadMaterialDepth;
     updateMaterialsList();
-    drawGrid();
 }
 
 
@@ -206,7 +205,7 @@ function updateMaterialMin(id, value) {
     if (mat) {
         mat.minAltitude = parseFloat(value);
         invalidateMaterialsCache();
-        drawGrid();
+        markPreviewDirty();
     }
 }
 
@@ -215,7 +214,7 @@ function updateMaterialMax(id, value) {
     if (mat) {
         mat.maxAltitude = parseFloat(value);
         invalidateMaterialsCache();
-        drawGrid();
+        markPreviewDirty();
     }
 }
 
@@ -229,7 +228,7 @@ function updateMaterialColor(id, value) {
     if (mat) {
         mat.color = value;
         invalidateMaterialsCache();
-        drawGrid();
+        markPreviewDirty();
     }
 }
 
@@ -239,7 +238,7 @@ function updateMaterialDepth(id, value) {
         mat.depth = parseInt(value) || 0;
         invalidateMaterialsCache();
         updateMaterialsList();
-        drawGrid();
+        markPreviewDirty();
     }
 }
 
@@ -332,7 +331,7 @@ function handleMaterialDrop(e) {
     
     invalidateMaterialsCache();
     updateMaterialsList();
-    drawGrid();
+    markPreviewDirty();
 }
 
 function toggleRoadMaterial() {

@@ -8,9 +8,23 @@ function saveMap() {
         return;
     }
 
+    const widthCells = grid[0].length;
+    const heightCells = grid.length;
+    const widthPx = widthCells * cellSize;
+    const heightPx = heightCells * cellSize;
+
     const saveData = {
         version: SAVEFILE_VERSION,
         savedAt: new Date().toISOString(),
+
+        // Map metadata
+        metadata: {
+            widthCells: widthCells,
+            heightCells: heightCells,
+            widthPx: widthPx,
+            heightPx: heightPx,
+            cellSizePx: cellSize
+        },
 
         // Core grid data
         grid: grid.map(row => row.map(cell => ({
@@ -46,6 +60,7 @@ function saveMap() {
         sidewalkColor: sidewalkColor,
         defaultSidewalkWidth: defaultSidewalkWidth,
         roadAttractionWidth: roadAttractionWidth,
+        sidewalkAttractionWidth: sidewalkAttractionWidth,
         
         // Road and sidewalk material settings
         roadMaterialDepth: roadMaterialDepth,
@@ -163,6 +178,11 @@ function applyLoadedMap(saveData) {
         const attrInput = document.getElementById('roadAttractionWidth');
         if (attrInput) attrInput.value = roadAttractionWidth;
     }
+    if (saveData.sidewalkAttractionWidth !== undefined) {
+        sidewalkAttractionWidth = saveData.sidewalkAttractionWidth;
+        const swAttrInput = document.getElementById('sidewalkAttractionWidth');
+        if (swAttrInput) swAttrInput.value = sidewalkAttractionWidth;
+    }
     
     // Restore road/sidewalk material settings
     if (saveData.roadMaterialDepth !== undefined) {
@@ -177,6 +197,15 @@ function applyLoadedMap(saveData) {
     if (saveData.sidewalkMaterialNumber !== undefined) {
         sidewalkMaterialNumber = saveData.sidewalkMaterialNumber;
     }
+    
+    // Update hidden inputs for road/sidewalk material settings
+    setInputValue('roadMaterialNumber', roadMaterialNumber);
+    setInputValue('roadMaterialDepth', roadMaterialDepth);
+    setInputValue('sidewalkMaterialNumber', sidewalkMaterialNumber);
+    setInputValue('sidewalkMaterialDepth', sidewalkMaterialDepth);
+    
+    // Update default sidewalk width input
+    setInputValue('defaultSidewalkWidth', defaultSidewalkWidth);
 
     // Restore UI parameters
     if (saveData.uiParams) {
@@ -201,6 +230,9 @@ function applyLoadedMap(saveData) {
     // Update UI and render
     if (typeof updateTileCountLabels === 'function') {
         updateTileCountLabels();
+    }
+    if (typeof updateMaterialsList === 'function') {
+        updateMaterialsList();
     }
     updateUI();
     drawGrid();

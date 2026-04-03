@@ -135,15 +135,26 @@ function exportMapData() {
             },
             metadata: {
                 exportDate: new Date().toISOString(),
-                gridWidth: grid[0].length,
-                gridHeight: grid.length
+                widthCells: grid[0].length,
+                heightCells: grid.length,
+                widthPx: grid[0].length * cellSize,
+                heightPx: grid.length * cellSize,
+                cellSizePx: cellSize
             }
         };
         filename = `materials_${parameters.tilesX}x${parameters.tilesY}_${Date.now()}.json`;
     } else if (exportType === 'layers') {
         const layers = generateLayeredMaterialsArray();
         mapData = {
-            layers: layers
+            layers: layers,
+            metadata: {
+                exportDate: new Date().toISOString(),
+                widthCells: grid[0].length,
+                heightCells: grid.length,
+                widthPx: grid[0].length * cellSize,
+                heightPx: grid.length * cellSize,
+                cellSizePx: cellSize
+            }
         };
         filename = `layers_${parameters.tilesX}x${parameters.tilesY}_${Date.now()}.json`;
     } else if (exportType === 'objects') {
@@ -155,11 +166,11 @@ function exportMapData() {
             sidewalks: sidewalksData,
             metadata: {
                 exportDate: new Date().toISOString(),
-                cellSize: cellSize,
-                gridWidth: grid[0].length,
-                gridHeight: grid.length,
-                worldWidth: grid[0].length * cellSize,
-                worldHeight: grid.length * cellSize,
+                widthCells: grid[0].length,
+                heightCells: grid.length,
+                widthPx: grid[0].length * cellSize,
+                heightPx: grid.length * cellSize,
+                cellSizePx: cellSize,
                 totalHouses: housesData.length,
                 totalTrees: treesData.length,
                 totalRocks: rocksData.length,
@@ -180,13 +191,15 @@ function exportMapData() {
         mapData = {
             name: 'roads',
             description: 'Each cell: [dx, dy] = normalized direction along road (+ attraction zone), or null if not covered.',
-            gridWidth: grid[0].length,
-            gridHeight: grid.length,
-            cellSize: cellSize,
-            worldWidth: grid[0].length * cellSize,
-            worldHeight: grid.length * cellSize,
-            totalRoads: roads.length,
-            attractionWidth: roadAttractionWidth,
+            metadata: {
+                widthCells: grid[0].length,
+                heightCells: grid.length,
+                widthPx: grid[0].length * cellSize,
+                heightPx: grid.length * cellSize,
+                cellSizePx: cellSize,
+                totalRoads: roads.length,
+                attractionWidth: roadAttractionWidth
+            },
             data: exportField
         };
         filename = `flowfield_roads_${parameters.tilesX}x${parameters.tilesY}_${Date.now()}.json`;
@@ -197,20 +210,19 @@ function exportMapData() {
             return;
         }
         const exportField = rawField.map(row => row.map(c =>
-            c.dist < 0 ? null : {
-                dx: parseFloat(c.dx.toFixed(4)),
-                dy: parseFloat(c.dy.toFixed(4)),
-                side: c.side
-            }
+            c.dist < 0 ? null : [parseFloat(c.dx.toFixed(4)), parseFloat(c.dy.toFixed(4))]
         ));
         mapData = {
             name: 'sidewalks',
-            description: 'Each cell: {dx, dy, side} where side is "right" (with traffic), "left" (against), or "mixed".',
-            gridWidth: grid[0].length,
-            gridHeight: grid.length,
-            cellSize: cellSize,
-            worldWidth: grid[0].length * cellSize,
-            worldHeight: grid.length * cellSize,
+            description: 'Each cell: [dx, dy] = normalized direction along sidewalk (+ attraction zone), or null if not covered.',
+            metadata: {
+                widthCells: grid[0].length,
+                heightCells: grid.length,
+                widthPx: grid[0].length * cellSize,
+                heightPx: grid.length * cellSize,
+                cellSizePx: cellSize,
+                attractionWidth: sidewalkAttractionWidth
+            },
             data: exportField
         };
         filename = `flowfield_sidewalks_${parameters.tilesX}x${parameters.tilesY}_${Date.now()}.json`;
@@ -223,11 +235,7 @@ function exportMapData() {
         )) : null;
 
         const sidewalksExport = sidewalksField ? sidewalksField.map(row => row.map(c =>
-            c.dist < 0 ? null : {
-                dx: parseFloat(c.dx.toFixed(4)),
-                dy: parseFloat(c.dy.toFixed(4)),
-                side: c.side
-            }
+            c.dist < 0 ? null : [parseFloat(c.dx.toFixed(4)), parseFloat(c.dy.toFixed(4))]
         )) : null;
 
         mapData = {
@@ -236,13 +244,14 @@ function exportMapData() {
                 sidewalks: sidewalksExport
             },
             metadata: {
-                gridWidth: grid[0].length,
-                gridHeight: grid.length,
-                cellSize: cellSize,
-                worldWidth: grid[0].length * cellSize,
-                worldHeight: grid.length * cellSize,
+                widthCells: grid[0].length,
+                heightCells: grid.length,
+                widthPx: grid[0].length * cellSize,
+                heightPx: grid.length * cellSize,
+                cellSizePx: cellSize,
                 totalRoads: roads.length,
-                roadAttractionWidth: roadAttractionWidth
+                roadAttractionWidth: roadAttractionWidth,
+                sidewalkAttractionWidth: sidewalkAttractionWidth
             }
         };
         filename = `flowfields_${parameters.tilesX}x${parameters.tilesY}_${Date.now()}.json`;
@@ -274,8 +283,11 @@ function exportMapData() {
             },
             metadata: {
                 exportDate: new Date().toISOString(),
-                gridWidth: grid[0].length,
-                gridHeight: grid.length,
+                widthCells: grid[0].length,
+                heightCells: grid.length,
+                widthPx: grid[0].length * cellSize,
+                heightPx: grid.length * cellSize,
+                cellSizePx: cellSize,
                 totalHouses: housesData.length,
                 totalTrees: treesData.length,
                 totalRocks: rocksData.length,
@@ -307,7 +319,7 @@ function exportMapData() {
     } else if (exportType === 'flowfield_roads') {
         showInfo(`Road flowfield exported: ${grid[0].length}x${grid.length} grid with ${roadAttractionWidth}-cell attraction zone.`);
     } else if (exportType === 'flowfield_sidewalks') {
-        showInfo(`Sidewalk flowfield exported: ${grid[0].length}x${grid.length} grid. Right=with traffic, Left=against.`);
+        showInfo(`Sidewalk flowfield exported: ${grid[0].length}x${grid.length} grid with ${sidewalkAttractionWidth}-cell attraction zone. Right=with traffic, Left=against.`);
     } else if (exportType === 'flowfields_all') {
         showInfo(`All flowfields exported: Roads + Sidewalks in ${grid[0].length}x${grid.length} grid.`);
     } else {

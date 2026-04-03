@@ -119,66 +119,17 @@ function createRoad() {
     showingFlowfieldType = 'none';
     if (typeof resetFlowfieldButtons === 'function') resetFlowfieldButtons();
 
-    let destroyedHouses = 0;
-    let destroyedRocks = 0;
-    let destroyedTrees = 0;
-
+    // Roads are a material layer - just mark cells, don't destroy entities
     path.forEach(cell => {
         const cellData = grid[cell.y][cell.x];
-
         cellData.roadIds.push(roadEntity.id);
-
-        if (cellData.houses.length > 0) {
-            destroyedHouses += cellData.houses.length;
-            cellData.houses.forEach(house => {
-                const group = houses.find(g => g.id === house.groupId);
-                if (group) {
-                    group.count--;
-                }
-            });
-            cellData.houses = [];
-        }
-
-        if (cellData.rocks.length > 0) {
-            destroyedRocks += cellData.rocks.length;
-            cellData.rocks.forEach(rock => {
-                const group = rocks.find(g => g.id === rock.groupId);
-                if (group) {
-                    group.count--;
-                }
-            });
-            cellData.rocks = [];
-        }
-
-        if (cellData.trees.length > 0) {
-            destroyedTrees += cellData.trees.length;
-            cellData.trees.forEach(tree => {
-                const group = trees.find(g => g.id === tree.groupId);
-                if (group) {
-                    group.count--;
-                }
-            });
-            cellData.trees = [];
-        }
     });
-
-    houses = houses.filter(g => g.count > 0);
-    rocks = rocks.filter(g => g.count > 0);
-    trees = trees.filter(g => g.count > 0);
 
     selectedCells = [];
     updateUI();
     drawGrid();
 
-    let msg = `Road created (width ${roadWidth}): ${path.length} cells from (${start.x},${start.y}) to (${end.x},${end.y})`;
-    const destroyed = [];
-    if (destroyedHouses > 0) destroyed.push(`${destroyedHouses} houses`);
-    if (destroyedRocks > 0) destroyed.push(`${destroyedRocks} rocks`);
-    if (destroyedTrees > 0) destroyed.push(`${destroyedTrees} trees`);
-    if (destroyed.length > 0) {
-        msg += `. Destroyed: ${destroyed.join(', ')}.`;
-    }
-    showInfo(msg);
+    showInfo(`Road created (width ${roadWidth}): ${path.length} cells from (${start.x},${start.y}) to (${end.x},${end.y})`);
 }
 function deleteRoad(roadId) {
     const roadIndex = roads.findIndex(r => r.id === roadId);
@@ -226,5 +177,5 @@ function updateAllRoadColors(newColor) {
     roadColor = newColor;
     roads.forEach(r => r.color = newColor);
     updateUI();
-    drawGrid();
+    markPreviewDirty();
 }

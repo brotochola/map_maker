@@ -106,6 +106,31 @@ function showInfo(message) {
     document.getElementById('roadInfo').textContent = message;
 }
 
+function updatePreviewControls() {
+    const previewButton = document.getElementById('updatePreviewBtn');
+    const previewStatus = document.getElementById('previewStatus');
+    if (!previewButton || !previewStatus) return;
+
+    previewButton.classList.toggle('active', previewDirty);
+    previewStatus.classList.toggle('pending', previewDirty);
+    previewStatus.textContent = previewDirty ? 'Preview out of date' : 'Preview current';
+}
+
+function markPreviewDirty() {
+    previewDirty = true;
+    updatePreviewControls();
+}
+
+function updatePreview() {
+    if (!grid || grid.length === 0) {
+        showInfo('No map to preview. Generate terrain first.');
+        return;
+    }
+
+    drawGrid();
+    showInfo('Preview updated.');
+}
+
 function clearAll() {
     roads = [];
     houses = [];

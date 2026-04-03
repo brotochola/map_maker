@@ -3,6 +3,16 @@
 // Offscreen canvas for terrain caching
 let terrainOffscreenCanvas = null;
 
+function getCurrentPreviewMetrics() {
+  if (!grid || grid.length === 0 || !grid[0]) return null;
+  return buildMapMetrics(
+    grid[0].length * cellSize,
+    grid.length * cellSize,
+    cellSize,
+    renderScale,
+  );
+}
+
 function renderTerrainToImageData(width, height, cs) {
   const canvas = document.createElement("canvas");
   canvas.width = width;
@@ -58,6 +68,16 @@ function ensureTerrainCache(canvasWidth, canvasHeight, cs) {
 
 function drawGrid() {
   if (!grid || grid.length === 0 || !grid[0]) return;
+
+  const previewMetrics = getCurrentPreviewMetrics();
+  if (previewMetrics && previewMetrics.isPreviewDanger) {
+    const message =
+      `Preview is very large at ${previewMetrics.previewWidth.toLocaleString()}x${previewMetrics.previewHeight.toLocaleString()} px. ` +
+      `Updating it may be slow.`;
+    if (document.getElementById("roadInfo")?.textContent !== message) {
+      showInfo(message);
+    }
+  }
 
   const roadBtn = document.getElementById("flowfieldToggleBtn");
   const sidewalkBtn = document.getElementById("sidewalkFlowfieldBtn");
@@ -347,6 +367,10 @@ function drawGrid() {
     }
   }
 
+  previewDirty = false;
+  if (typeof updatePreviewControls === "function") {
+    updatePreviewControls();
+  }
   updateStats();
 }
 
@@ -624,7 +648,7 @@ function drawAltitudeOverlay(ctx, cs, gridWidth, gridHeight) {
 
 function toggleAltitudeOverlay(enabled) {
   showAltitudeOverlay = enabled;
-  drawGrid();
+  markPreviewDirty();
 }
 
 function exportMapImage(scale = 1) {

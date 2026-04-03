@@ -462,6 +462,26 @@
             border-radius: 4px;
         }
 
+        .preview-status {
+            font-size: 12px;
+            color: #8fa3ad;
+            white-space: nowrap;
+        }
+
+        .preview-status.pending {
+            color: #ffb74d;
+        }
+
+        .size-hint.warning {
+            color: #ffcc80;
+            border-left: 3px solid #ff9800;
+        }
+
+        .size-hint.danger {
+            color: #ef9a9a;
+            border-left: 3px solid #f44336;
+        }
+
         .terrain-params {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -694,6 +714,7 @@
                         </label>
                     </div>
                     <button style="margin-top: 10px; width: 100%;" onclick="generateGrid()">🔄 Generate Terrain</button>
+                    <div id="mapSizeHint" class="info-text size-hint" style="margin-top: 10px;"></div>
                 </div>
                 <br>
                 <!-- Roads Panel -->
@@ -771,14 +792,16 @@
                                 <input type="color" id="sidewalkColor" value="#8c8c8c"
                                     onchange="updateAllSidewalkColors(this.value)">
                             </label>
-                        </div>
-                        <div
-                            style="margin-bottom: 10px; padding: 8px; background: rgba(0, 0, 0, 0.2); border-radius: 6px;">
                             <label class="tooltip"
-                                data-tooltip="If checked, houses/trees/rocks on sidewalk cells will be destroyed when generating sidewalks."
-                                style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                                <input type="checkbox" id="sidewalkDestroyEntities">
-                                <span style="flex: 1;">Destroy entities on sidewalks</span>
+                                data-tooltip="How many cells the sidewalk overlaps into the road (0 = no overlap, starts at road edge).">
+                                Road overlap:
+                                <input type="number" id="sidewalkOverlap" value="0" min="0" max="5">
+                            </label>
+                            <label class="tooltip"
+                                data-tooltip="Width of the attraction zone around sidewalks in the flowfield. Pedestrians outside sidewalks will be guided back.">
+                                Attraction width:
+                                <input type="number" id="sidewalkAttractionWidth" value="2" min="0" max="10"
+                                    onchange="sidewalkAttractionWidth = parseInt(this.value) || 0">
                             </label>
                         </div>
                         <div class="controls">
@@ -806,6 +829,9 @@
                             title="Toggle road flowfield overlay">🧭 Roads</button>
                         <button id="sidewalkFlowfieldBtn" class="secondary" onclick="toggleFlowfieldOverlay('sidewalks')"
                             title="Toggle sidewalk flowfield overlay">🚶 Sidewalks</button>
+                        <button id="updatePreviewBtn" class="secondary" onclick="updatePreview()"
+                            title="Apply pending preview changes">🔄 Update Preview</button>
+                        <span id="previewStatus" class="preview-status">Preview current</span>
                         <label style="margin-left: 10px; display: flex; align-items: center; gap: 4px; cursor: pointer;" title="Show altitude as grayscale overlay">
                             <input type="checkbox" id="altitudeOverlayCheckbox" onchange="toggleAltitudeOverlay(this.checked)">
                             <span style="font-size: 12px; white-space: nowrap;">🏔️ Altitude</span>

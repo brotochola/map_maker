@@ -76,7 +76,12 @@ function applyTransform() {
 
 function setRenderScale(value) {
     renderScale = parseFloat(value);
-    drawGrid();
+    if (typeof updateTileCountLabels === 'function') {
+        updateTileCountLabels();
+    }
+    if (grid && grid.length > 0) {
+        markPreviewDirty();
+    }
 }
 
 function handleWheel(event) {

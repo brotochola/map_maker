@@ -1,5 +1,5 @@
 // ============== SIDEWALKS ==============
-function expandSidewalk(road) {
+function expandSidewalk(road, overlap = 0) {
   if (!road.sidewalkWidth || road.sidewalkWidth < 1) return [];
 
   // Build set of all road cells (from all roads)
@@ -39,6 +39,44 @@ function expandSidewalk(road) {
     }
   }
 
+  // Add overlap: include road edge cells within `overlap` distance of non-road cells
+  if (overlap > 0) {
+    const addedOverlap = new Set();
+    for (const roadCell of road.cells) {
+      const cellKey = `${roadCell.x},${roadCell.y}`;
+      if (addedOverlap.has(cellKey)) continue;
+
+      // Calculate minimum distance to a non-road cell
+      let minDistToEdge = Infinity;
+      for (let dy = -overlap; dy <= overlap; dy++) {
+        for (let dx = -overlap; dx <= overlap; dx++) {
+          const nx = roadCell.x + dx;
+          const ny = roadCell.y + dy;
+          const key = `${nx},${ny}`;
+
+          // Check if this neighbor is a non-road cell (or out of bounds)
+          const isNonRoad =
+            ny < 0 ||
+            ny >= grid.length ||
+            nx < 0 ||
+            nx >= grid[0].length ||
+            !roadCellSet.has(key);
+
+          if (isNonRoad) {
+            const dist = Math.max(Math.abs(dx), Math.abs(dy)); // Chebyshev distance
+            minDistToEdge = Math.min(minDistToEdge, dist);
+          }
+        }
+      }
+
+      // If this road cell is within `overlap` distance of the edge, include it in sidewalk
+      if (minDistToEdge <= overlap) {
+        addedOverlap.add(cellKey);
+        sidewalkCells.push({ x: roadCell.x, y: roadCell.y });
+      }
+    }
+  }
+
   return sidewalkCells;
 }
 
@@ -57,21 +95,18 @@ function generateSidewalks() {
   // Read current sidewalk width from input and apply to all roads
   const sidewalkWidth =
     parseInt(document.getElementById("defaultSidewalkWidth").value) || 0;
+  const overlap =
+    parseInt(document.getElementById("sidewalkOverlap").value) || 0;
+
   for (const road of roads) {
     road.sidewalkWidth = sidewalkWidth;
   }
 
-  sidewalkDestroyEntities = document.getElementById(
-    "sidewalkDestroyEntities",
-  ).checked;
-
   let totalSidewalkCells = 0;
-  let destroyedHouses = 0;
-  let destroyedRocks = 0;
-  let destroyedTrees = 0;
 
+  // Sidewalks are a material layer - just mark cells, don't destroy entities
   for (const road of roads) {
-    const swCells = expandSidewalk(road);
+    const swCells = expandSidewalk(road, overlap);
     road.sidewalkCells = swCells;
 
     for (const cell of swCells) {
@@ -79,53 +114,16 @@ function generateSidewalks() {
       if (!cellData.sidewalkRoadIds.includes(road.id)) {
         cellData.sidewalkRoadIds.push(road.id);
       }
-
-      if (sidewalkDestroyEntities) {
-        if (cellData.houses.length > 0) {
-          destroyedHouses += cellData.houses.length;
-          cellData.houses.forEach((house) => {
-            const group = houses.find((g) => g.id === house.groupId);
-            if (group) group.count--;
-          });
-          cellData.houses = [];
-        }
-        if (cellData.rocks.length > 0) {
-          destroyedRocks += cellData.rocks.length;
-          cellData.rocks.forEach((rock) => {
-            const group = rocks.find((g) => g.id === rock.groupId);
-            if (group) group.count--;
-          });
-          cellData.rocks = [];
-        }
-        if (cellData.trees.length > 0) {
-          destroyedTrees += cellData.trees.length;
-          cellData.trees.forEach((tree) => {
-            const group = trees.find((g) => g.id === tree.groupId);
-            if (group) group.count--;
-          });
-          cellData.trees = [];
-        }
-      }
     }
 
     totalSidewalkCells += swCells.length;
-  }
-
-  if (sidewalkDestroyEntities) {
-    houses = houses.filter((g) => g.count > 0);
-    rocks = rocks.filter((g) => g.count > 0);
-    trees = trees.filter((g) => g.count > 0);
   }
 
   updateUI();
   drawGrid();
 
   let msg = `Sidewalks generated: ${totalSidewalkCells} cells across ${roads.length} roads.`;
-  const destroyed = [];
-  if (destroyedHouses > 0) destroyed.push(`${destroyedHouses} houses`);
-  if (destroyedRocks > 0) destroyed.push(`${destroyedRocks} rocks`);
-  if (destroyedTrees > 0) destroyed.push(`${destroyedTrees} trees`);
-  if (destroyed.length > 0) msg += ` Destroyed: ${destroyed.join(", ")}.`;
+  if (overlap > 0) msg += ` (${overlap} cell overlap with road)`;
   showInfo(msg);
 }
 
@@ -158,5 +156,5 @@ function updateSidewalkWidth(roadId, width) {
 
 function updateAllSidewalkColors(newColor) {
   sidewalkColor = newColor;
-  drawGrid();
+  markPreviewDirty();
 }
